@@ -34,6 +34,7 @@ int main(int argc, char*argv[]) {
     printPrompt();
     // You should read in the command and execute it here
     readCommand();
+	//printf("EXIT\n");
     // You should probably remove this; right now, it
     // just exits
   }
@@ -62,8 +63,20 @@ void readCommand() {
   scanf("%s", command);
   strncat(directory, "/", 1);
   strncat(directory, command, strlen(command));
+  int error=0; 
   char* args [] = {command,NULL};
-  int error = execvp(command, args);
+  pid_t ps = fork();
+  /*Fork spawns another thread that executes the same steam of instructions as the parent. its id is 0 if it is the callee and >1 if it is the caller. It is -1 if there is an issue*/
+   if (ps == -1)
+   {
+        printf("Killing: Too many processes");
+	 exit(EXIT_FAILURE);
+   }
+
+  if (ps == 0) //Callee
+	error = execvp(command, args); //Programs called by exec return 0 and end execution of this program 
+  else //Caller
+	usleep(20000); 
   if (error) {
     printf("we fucked up\n");
   }
