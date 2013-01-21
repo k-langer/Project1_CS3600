@@ -69,14 +69,20 @@ void readCommand() {
   /*Fork spawns another thread that executes the same steam of instructions as the parent. its id is 0 if it is the callee and >1 if it is the caller. It is -1 if there is an issue*/
    if (ps == -1)
    {
-        printf("Killing: Too many processes");
+        printf("Too many processes");
 	 exit(EXIT_FAILURE);
    }
 
   if (ps == 0) //Callee
+  {
 	error = execvp(command, args); //Programs called by exec return 0 and end execution of this program 
-  else //Caller
-	usleep(20000); 
+	exit(127);
+  }
+  int status = 0;
+  int stat = wait(&status); //wait acts like a mutex lock, waiting for the child process until it has information
+ //Returns the value of the job if the job is still running. Otherwise, return status of that job's completion.
+  while (stat != ps)
+	{}
   if (error) {
     printf("we fucked up\n");
   }
