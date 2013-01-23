@@ -75,6 +75,14 @@ void readCommand() {
   strncat(directory, command, strlen(command));
   char** args = parseArgs(command);
   
+  if(strcmp(args[0],"cd") == 0)
+  {
+     if(args[1])
+     	chdir(args[1]);
+     else
+	chdir("/home");
+	return;
+  }
   pid_t parent = fork();
   
   if (parent < 0) {
@@ -83,7 +91,7 @@ void readCommand() {
   }
   else if (!parent) {
     execvp(args[0], args);
-    return;
+    //return;
   } else {
     waitpid(parent, NULL, 0);
   }
