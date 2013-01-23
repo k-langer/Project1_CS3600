@@ -135,12 +135,14 @@ char** parseArgs(char* input) {
       input++;
       c = *input;
     }
-    if (c == ' ' && !esc_mode) {
-      *(arg + argLength) = 0;
-      *(arguments + argCount) = arg;
-      argCount++;
-      arg = (char*)calloc(MAX_CMD_LENGTH, sizeof(char));
-      argLength = 0;
+    if ((c == ' ' || c == '\t') && !esc_mode) {
+      if (argLength) {
+        *(arg + argLength) = 0;
+        *(arguments + argCount) = arg;
+        argCount++;
+        arg = (char*)calloc(MAX_CMD_LENGTH, sizeof(char));
+        argLength = 0;
+      }  
     } else {
       *(arg + argLength) = c;
       argLength++;
