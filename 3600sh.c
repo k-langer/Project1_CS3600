@@ -77,10 +77,14 @@ void readCommand() {
   
   if(strcmp(args[0],"cd") == 0)
   {
+     int error = 0; 
      if(args[1])
-     	chdir(args[1]);
+     	  error = chdir(args[1]);
      else
-	chdir("/home");
+	error = chdir("/home");
+     if(error)
+	printf("cd: %s: No such file or directory\n",args[1]);
+	
 	return;
   }
   pid_t parent = fork();
@@ -91,7 +95,6 @@ void readCommand() {
   }
   else if (!parent) {
     execvp(args[0], args);
-    //return;
   } else {
     waitpid(parent, NULL, 0);
   }
@@ -120,8 +123,14 @@ char** parseArgs(char* input) {
   char* arg = (char*)calloc(MAX_CMD_LENGTH, sizeof(char));
   int argLength = 0;
   c = *input;
+
   while (c != 0) {
-    if (c == ' ') {
+    if (c == '\\' && *(input+1))
+    {
+	input++;
+       c = *input;
+    }
+    if (c == ' ' ) {
       *(arg + argLength) = 0;
       *(arguments + argCount) = arg;
       argCount++;
