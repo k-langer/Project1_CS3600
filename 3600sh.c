@@ -21,9 +21,13 @@
 #define MAX_NUM_ARGS 10
 #define EXIT_COMMAND "exit"
 
+typedef char bool;
+#define TRUE 1
+#define FALSE 0
+
 void printPrompt();
 void readCommand();
-void buildInput(char* input);
+bool buildInput(char* input);
 char** parseArgs(char* input);
 void deleteArgs(char** args);
 
@@ -63,12 +67,10 @@ void readCommand() {
   getcwd(directory, MAX_DIR_LENGTH );
   *(directory + MAX_DIR_LENGTH) = 0;
   char* command = calloc(MAX_INPUT_LENGTH + 1, sizeof(char));
-  buildInput(command);
+  bool terminate = buildInput(command);
   if (strncmp(command, EXIT_COMMAND, strlen(EXIT_COMMAND)) == 0) {
     do_exit();
   }
-  strncat(directory, "/", 1);
-  strncat(directory, command, strlen(command));
   char** args = parseArgs(command);
   
   if(strcmp(args[0],"cd") == 0)
@@ -93,6 +95,9 @@ void readCommand() {
     execvp(args[0], args);
   } else {
     waitpid(parent, NULL, 0);
+    if (terminate) {
+      do_exit();
+    }
   }
   deleteArgs(args);
   free(args);
@@ -100,28 +105,32 @@ void readCommand() {
   free(directory);
 }
 
-void buildInput(char* input) {
+bool buildInput(char* input) {
   int length = 0;
   char c = getchar();
-  while (c != '\n' && length <= MAX_INPUT_LENGTH) {
+  while (c != '\n' && c != EOF && length <= MAX_INPUT_LENGTH) {
     *(input + length) = c;
     length++;
     c = getchar();
   }
   *(input + length) = 0;
+  if (c == EOF) {
+    return TRUE;
+  } else {
+    return FALSE;
+  }
 }
 
 char** parseArgs(char* input) {
   char** arguments = (char**)calloc(MAX_NUM_ARGS, sizeof(char*));
   int argCount = 0;
-  char c;
+  char c = *input;
   char* arg = (char*)calloc(MAX_CMD_LENGTH, sizeof(char));
   int argLength = 0;
-  c = *input;
-  char esc_mode = 0;
+  bool esc_mode = FALSE;
   while (c != 0) {
     if (c == '\\' && *(input+1)){
-      esc_mode = 1;
+      esc_mode = TRUE;
       input++;
       c = *input;
     }
