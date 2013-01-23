@@ -50,7 +50,7 @@ int main(int argc, char*argv[]) {
 
 void printPrompt() {
   char* username = getlogin();
-  char* hostname = calloc(MAX_HOSTNAME_LENGTH + 1, sizeof(char));
+  char* hostname = (char*)calloc(MAX_HOSTNAME_LENGTH + 1, sizeof(char));
   gethostname(hostname, MAX_HOSTNAME_LENGTH);
   *(hostname + MAX_HOSTNAME_LENGTH) = 0;
   char* directory = calloc(MAX_DIR_LENGTH + 1, sizeof(char));
@@ -90,6 +90,7 @@ void readCommand() {
   deleteArgs(args);
   free(args);
   free(command);
+  free(directory);
 }
 
 void buildInput(char* input) {
