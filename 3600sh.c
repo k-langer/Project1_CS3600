@@ -92,7 +92,14 @@ void readCommand() {
     do_exit();
   }
   else if (!parent) {
-    execvp(args[0], args);
+    if (execvp(args[0], args)) {
+      printf("Error: ");
+      switch(errno) {
+        case 1: printf("Permission denied.\n"); break;
+        case 2: printf("Command not found.\n"); break;
+        default: printf("Unkown error.\n"); break;
+      }
+    }
     exit(0);
   } else {
     waitpid(parent, NULL, 0);
