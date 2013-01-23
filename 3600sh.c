@@ -128,8 +128,9 @@ char** parseArgs(char* input) {
   char c = *input;
   char* arg = (char*)calloc(MAX_CMD_LENGTH, sizeof(char));
   int argLength = 0;
-  bool esc_mode = FALSE;
+  bool esc_mode;
   while (c != 0) {
+    esc_mode = FALSE;
     if (c == '\\' && *(input+1)){
       esc_mode = TRUE;
       input++;
