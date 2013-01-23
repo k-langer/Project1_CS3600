@@ -123,14 +123,14 @@ char** parseArgs(char* input) {
   char* arg = (char*)calloc(MAX_CMD_LENGTH, sizeof(char));
   int argLength = 0;
   c = *input;
-
+  char esc_mode = 0;
   while (c != 0) {
-    if (c == '\\' && *(input+1))
-    {
-	input++;
-       c = *input;
+    if (c == '\\' && *(input+1)){
+     esc_mode = 1;
+      input++;
+      c = *input;
     }
-    if (c == ' ' ) {
+    if (c == ' ' && !esc_mode) {
       *(arg + argLength) = 0;
       *(arguments + argCount) = arg;
       argCount++;
