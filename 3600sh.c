@@ -69,7 +69,7 @@ void readCommand() {
     memoryError();
   }
   bool terminate = buildInput(command);
-  if (strncmp(command, EXIT_COMMAND, strlen(EXIT_COMMAND)) == 0 || terminate) {
+  if (strncmp(command, EXIT_COMMAND, strlen(EXIT_COMMAND)) == 0) {
     do_exit();
   }
   char** args = parseArgs(command);
@@ -95,7 +95,7 @@ void readCommand() {
   else if (!parent) {
     if (execvp(args[0], args)) {
       printf("Error: ");
-      switch(errno) {
+      switch(errno && !terminate) {
         case 1: printf("Permission denied.\n"); break;
         case 2: printf("Command not found.\n"); break;
         default: printf("Unkown error.\n"); break;
@@ -104,9 +104,9 @@ void readCommand() {
     exit(0);
   } else {
     waitpid(parent, NULL, 0);
-   // if (terminate) {
-    //  do_exit();
-    //}
+   if (terminate) {
+      do_exit();
+    }
   }
   deleteArgs(args);
   free(args);
