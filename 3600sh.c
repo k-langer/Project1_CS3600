@@ -50,7 +50,7 @@ int main(int argc, char*argv[]) {
 }
 
 void printPrompt() {
-  char* username = getlogin();
+  char* username = getenv("USER");
   char* hostname = (char*)calloc(MAX_HOSTNAME_LENGTH + 1, sizeof(char));
   gethostname(hostname, MAX_HOSTNAME_LENGTH);
   *(hostname + MAX_HOSTNAME_LENGTH) = 0;
