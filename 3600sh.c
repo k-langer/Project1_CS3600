@@ -69,7 +69,7 @@ void readCommand() {
     memoryError();
   }
   bool terminate = buildInput(command);
-  if (strncmp(command, EXIT_COMMAND, strlen(EXIT_COMMAND)) == 0) {
+  if (strncmp(command, EXIT_COMMAND, strlen(EXIT_COMMAND)) == 0 || terminate) {
     do_exit();
   }
   char** args = parseArgs(command);
@@ -104,9 +104,9 @@ void readCommand() {
     exit(0);
   } else {
     waitpid(parent, NULL, 0);
-    if (terminate) {
-      do_exit();
-    }
+   // if (terminate) {
+    //  do_exit();
+    //}
   }
   deleteArgs(args);
   free(args);
