@@ -142,13 +142,20 @@ char** parseArgs(char* input) {
   }
   int argLength = 0;
   bool esc_mode;
+  bool redirect_output;
   while (c != 0) {
     esc_mode = FALSE;
+    redirect_output = FALSE;
     if (c == '\\' && *(input+1)){
       esc_mode = TRUE;
       input++;
       c = *input;
     }
+    if (c == '>' && !esc_mode){
+	redirect_output = TRUE;
+	input++;
+	c = *input;
+	}
     if ((c == ' ' || c == '\t') && !esc_mode) {
       if (argLength) {
         *(arg + argLength) = 0;
