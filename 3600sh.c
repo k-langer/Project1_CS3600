@@ -18,11 +18,14 @@
 #define MAX_CMD_LENGTH 100
 #define MAX_HOSTNAME_LENGTH 100
 #define MAX_INPUT_LENGTH 100
+#define MAX_NUM_ARGS 10
 #define EXIT_COMMAND "exit"
 
 void printPrompt();
 void readCommand();
 void buildInput(char* input);
+char** parseArgs(char* input);
+void deleteArgs(char** args);
 
 int main(int argc, char*argv[]) {
   // Code which sets stdout to be unbuffered
@@ -70,7 +73,7 @@ void readCommand() {
   }
   strncat(directory, "/", 1);
   strncat(directory, command, strlen(command));
-  char* args [] = {command,NULL};
+  char** args = parseArgs(command);
   
   pid_t parent = fork();
   
@@ -79,11 +82,13 @@ void readCommand() {
     do_exit();
   }
   else if (!parent) {
-    execvp(command, args);
+    execvp(args[0], args);
     return;
   } else {
     waitpid(parent, NULL, 0);
   }
+  deleteArgs(args);
+  free(args);
   free(command);
 }
 
@@ -97,6 +102,41 @@ void buildInput(char* input) {
     scanf("%c", &c);  
   }
   *(input + length) = 0;
+}
+
+char** parseArgs(char* input) {
+  char** arguments = (char**)calloc(MAX_NUM_ARGS, sizeof(char*));
+  int argCount = 0;
+  char c;
+  char* arg = (char*)calloc(MAX_CMD_LENGTH, sizeof(char));
+  int argLength = 0;
+  c = *input;
+  while (c != 0) {
+    if (c == ' ') {
+      *(arg + argLength) = 0;
+      *(arguments + argCount) = arg;
+      argCount++;
+      arg = (char*)calloc(MAX_CMD_LENGTH, sizeof(char));
+      argLength = 0;
+    } else {
+      *(arg + argLength) = c;
+      argLength++;
+    }
+    c = *(++input);
+  }
+  *(arg + argLength) = 0;
+  *(arguments + argCount) = arg;
+  argCount++;
+  *(arguments + argCount) = NULL;
+  return arguments;
+}    
+  
+void deleteArgs(char** args) {
+  char* arg = *(args);
+  while (arg != 0) {
+    free(arg);
+    arg = *(++args);
+  }
 }
 
 // Function which exits, printing the necessary message
