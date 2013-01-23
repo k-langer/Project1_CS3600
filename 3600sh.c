@@ -17,9 +17,12 @@
 #define MAX_DIR_LENGTH 100
 #define MAX_CMD_LENGTH 100
 #define MAX_HOSTNAME_LENGTH 100
+#define MAX_INPUT_LENGTH 100
+#define EXIT_COMMAND "exit"
 
 void printPrompt();
 void readCommand();
+void buildInput(char* input);
 
 int main(int argc, char*argv[]) {
   // Code which sets stdout to be unbuffered
@@ -59,34 +62,41 @@ void readCommand() {
   char* directory = calloc(MAX_DIR_LENGTH + 1, sizeof(char));
   getcwd(directory, MAX_DIR_LENGTH );
   *(directory + MAX_DIR_LENGTH) = 0;
-  char* command = calloc(MAX_CMD_LENGTH + 1, sizeof(char));
-  scanf("%s", command);
+  char* command = calloc(MAX_INPUT_LENGTH + 1, sizeof(char));
+  buildInput(command);
+  //scanf("%s", command);
+  if (strncmp(command, EXIT_COMMAND, strlen(EXIT_COMMAND)) == 0) {
+    do_exit();
+  }
   strncat(directory, "/", 1);
   strncat(directory, command, strlen(command));
-  int error=0; 
   char* args [] = {command,NULL};
-  pid_t ps = fork();
-  /*Fork spawns another thread that executes the same steam of instructions as the parent. its id is 0 if it is the callee and >1 if it is the caller. It is -1 if there is an issue*/
-   if (ps == -1)
-   {
-        printf("Too many processes");
-	 exit(EXIT_FAILURE);
-   }
-
-  if (ps == 0) //Callee
-  {
-	error = execvp(command, args); //Programs called by exec return 0 and end execution of this program 
-	exit(127);
+  
+  pid_t parent = fork();
+  
+  if (parent < 0) {
+    printf("we fucked up");  
+    do_exit();
   }
-  int status = 0;
-  int stat = wait(&status); //wait acts like a mutex lock, waiting for the child process until it has information
- //Returns the value of the job if the job is still running. Otherwise, return status of that job's completion.
-  while (stat != ps)
-	{}
-  if (error) {
-    printf("we fucked up\n");
+  else if (!parent) {
+    execvp(command, args);
+    return;
+  } else {
+    waitpid(parent, NULL, 0);
   }
   free(command);
+}
+
+void buildInput(char* input) {
+  int length = 0;
+  char c;
+  scanf("%c", &c);
+  while (c != '\n' && length <= MAX_INPUT_LENGTH) {
+    *(input + length) = c;
+    length++;
+    scanf("%c", &c);  
+  }
+  *(input + length) = 0;
 }
 
 // Function which exits, printing the necessary message
