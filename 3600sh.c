@@ -30,6 +30,7 @@ void readCommand();
 bool buildInput(char* input);
 char** parseArgs(char* input);
 void deleteArgs(char** args);
+void memoryError();
 
 int main(int argc, char*argv[]) {
   // Code which sets stdout to be unbuffered
@@ -52,21 +53,21 @@ int main(int argc, char*argv[]) {
 void printPrompt() {
   char* username = getenv("USER");
   char* hostname = (char*)calloc(MAX_HOSTNAME_LENGTH + 1, sizeof(char));
+  if (!hostname) {
+    memoryError();
+  }
   gethostname(hostname, MAX_HOSTNAME_LENGTH);
   *(hostname + MAX_HOSTNAME_LENGTH) = 0;
-  char* directory = calloc(MAX_DIR_LENGTH + 1, sizeof(char));
-  getcwd(directory, MAX_DIR_LENGTH );
-  *(directory + MAX_DIR_LENGTH) = 0;
+  char* directory = getenv("PWD");
   printf("%s@%s:%s> ", username, hostname, directory);
   free(hostname);
-  free(directory);
 }
 
 void readCommand() {
-  char* directory = calloc(MAX_DIR_LENGTH + 1, sizeof(char));
-  getcwd(directory, MAX_DIR_LENGTH );
-  *(directory + MAX_DIR_LENGTH) = 0;
   char* command = calloc(MAX_INPUT_LENGTH + 1, sizeof(char));
+  if (!command) {
+    memoryError();
+  }
   bool terminate = buildInput(command);
   if (strncmp(command, EXIT_COMMAND, strlen(EXIT_COMMAND)) == 0) {
     do_exit();
@@ -110,7 +111,6 @@ void readCommand() {
   deleteArgs(args);
   free(args);
   free(command);
-  free(directory);
 }
 
 bool buildInput(char* input) {
@@ -131,9 +131,15 @@ bool buildInput(char* input) {
 
 char** parseArgs(char* input) {
   char** arguments = (char**)calloc(MAX_NUM_ARGS, sizeof(char*));
+  if (!arguments) {
+    memoryError();
+  }
   int argCount = 0;
   char c = *input;
   char* arg = (char*)calloc(MAX_CMD_LENGTH, sizeof(char));
+  if (!arg) {
+    memoryError();
+  }
   int argLength = 0;
   bool esc_mode;
   while (c != 0) {
@@ -149,6 +155,9 @@ char** parseArgs(char* input) {
         *(arguments + argCount) = arg;
         argCount++;
         arg = (char*)calloc(MAX_CMD_LENGTH, sizeof(char));
+        if (!arg) {
+          memoryError();
+        }
         argLength = 0;
       }  
     } else {
@@ -170,6 +179,11 @@ void deleteArgs(char** args) {
     free(arg);
     arg = *(++args);
   }
+}
+
+void memoryError() {
+  printf("Error: A memory oops has occurred.");
+  do_exit();
 }
 
 // Function which exits, printing the necessary message
