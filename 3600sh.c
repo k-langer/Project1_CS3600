@@ -93,6 +93,7 @@ void readCommand() {
   }
   else if (!parent) {
     execvp(args[0], args);
+    exit(0);
   } else {
     waitpid(parent, NULL, 0);
     if (terminate) {
