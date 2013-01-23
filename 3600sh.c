@@ -40,9 +40,6 @@ int main(int argc, char*argv[]) {
     printPrompt();
     // You should read in the command and execute it here
     readCommand();
-	//printf("EXIT\n");
-    // You should probably remove this; right now, it
-    // just exits
   }
 
   return 0;
@@ -67,7 +64,6 @@ void readCommand() {
   *(directory + MAX_DIR_LENGTH) = 0;
   char* command = calloc(MAX_INPUT_LENGTH + 1, sizeof(char));
   buildInput(command);
-  //scanf("%s", command);
   if (strncmp(command, EXIT_COMMAND, strlen(EXIT_COMMAND)) == 0) {
     do_exit();
   }
@@ -106,12 +102,11 @@ void readCommand() {
 
 void buildInput(char* input) {
   int length = 0;
-  char c;
-  scanf("%c", &c);
+  char c = getchar();
   while (c != '\n' && length <= MAX_INPUT_LENGTH) {
     *(input + length) = c;
     length++;
-    scanf("%c", &c);  
+    c = getchar();
   }
   *(input + length) = 0;
 }
@@ -126,7 +121,7 @@ char** parseArgs(char* input) {
   char esc_mode = 0;
   while (c != 0) {
     if (c == '\\' && *(input+1)){
-     esc_mode = 1;
+      esc_mode = 1;
       input++;
       c = *input;
     }
