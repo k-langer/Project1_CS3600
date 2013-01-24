@@ -87,18 +87,21 @@ void readCommand() {
 	return;
   }
   pid_t parent = fork();
-  
+
   if (parent < 0) {
     printf("we fucked up");  
     do_exit();
   }
-  else if (!parent && !terminate) {
+  else if (!parent) {
     if (execvp(args[0], args)) {
+	if(!terminate)
+	{
       printf("Error: ");
       switch(errno) {
         case 1: printf("Permission denied.\n"); break;
         case 2: printf("Command not found.\n"); break;
         default: printf("Unkown error.\n"); break;
+	}
       }
     }
     exit(0);
