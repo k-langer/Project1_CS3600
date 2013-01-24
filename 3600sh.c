@@ -49,7 +49,6 @@ int main(int argc, char*argv[]) {
 
   return 0;
 }
-
 void printPrompt() {
   char* username = getenv("USER");
   char* hostname = (char*)calloc(MAX_HOSTNAME_LENGTH + 1, sizeof(char));
@@ -58,7 +57,8 @@ void printPrompt() {
   }
   gethostname(hostname, MAX_HOSTNAME_LENGTH);
   *(hostname + MAX_HOSTNAME_LENGTH) = 0;
-  char* directory = getenv("PWD");
+  char* directory = getcwd(NULL,MAX_DIR_LENGTH);
+  //char* directory = getenv("PWD");
   printf("%s@%s:%s> ", username, hostname, directory);
   free(hostname);
 }
@@ -73,7 +73,7 @@ void readCommand() {
     do_exit();
   }
   char** args = parseArgs(command);
-  
+
   if(strcmp(args[0],"cd") == 0)
   {
      int error = 0; 
@@ -94,7 +94,7 @@ void readCommand() {
   }
   else if (!parent) {
     if (execvp(args[0], args)) {
-	if(!terminate)
+	if(args && !terminate)//!terminate)
 	{
       printf("Error: ");
       switch(errno) {
@@ -144,21 +144,40 @@ char** parseArgs(char* input) {
     memoryError();
   }
   int argLength = 0;
-  bool esc_mode;
+  bool esc_mode = FALSE;
   bool redirect_output;
   while (c != 0) {
-    esc_mode = FALSE;
+  
     redirect_output = FALSE;
-    if (c == '\\' && *(input+1)){
-      esc_mode = TRUE;
-      input++;
-      c = *input;
-    }
-    if (c == '>' && !esc_mode){
-	redirect_output = TRUE;
+    esc_mode = FALSE;
+    if (c == '\\')
+    {
 	input++;
 	c = *input;
+	if (c == '\\' || c == '>' || c == '<' ||  c == '&' || c == ' ')
+	{
+		esc_mode = TRUE;
 	}
+	else if (c =='n' || c == 't')
+	{
+		input++;
+		c=*input;
+	}
+	else 
+	{
+		printf("invalid escape character\n");
+		deleteArgs(arguments);
+		free(arguments);
+		arguments = (char**)calloc(1, sizeof(char*));
+		arguments[0]= (char*)calloc(1, sizeof(char));
+		return arguments;
+	}
+		
+    }
+    if(c == '>' && !esc_mode)
+    {
+	//TODO
+    }
     if ((c == ' ' || c == '\t') && !esc_mode) {
       if (argLength) {
         *(arg + argLength) = 0;
