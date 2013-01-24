@@ -92,10 +92,10 @@ void readCommand() {
     printf("we fucked up");  
     do_exit();
   }
-  else if (!parent) {
+  else if (!parent && !terminate) {
     if (execvp(args[0], args)) {
       printf("Error: ");
-      switch(errno && !terminate) {
+      switch(errno) {
         case 1: printf("Permission denied.\n"); break;
         case 2: printf("Command not found.\n"); break;
         default: printf("Unkown error.\n"); break;
