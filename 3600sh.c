@@ -25,10 +25,14 @@ typedef char bool;
 #define TRUE 1
 #define FALSE 0
 
+typedef int fd; 
+#define STDIN 0
+#define STDOUT 1
+#define STDERR 2
 void printPrompt();
 void readCommand();
 bool buildInput(char* input);
-char** parseArgs(char* input);
+char** parseArgs(char* input,char** pipein,char** pipeout);
 void deleteArgs(char** args);
 void memoryError();
 
@@ -72,8 +76,23 @@ void readCommand() {
   if (strncmp(command, EXIT_COMMAND, strlen(EXIT_COMMAND)) == 0) {
     do_exit();
   }
-  char** args = parseArgs(command);
+  char*pipein = NULL;
+  char*pipeout = NULL;
+  char** args = parseArgs(command,&pipein,&pipeout);
 
+  if(pipeout)
+  {
+	fd new_fd = open(pipeout,O_CREAT);
+	//TODO creates the file correctly but does not yet write to it
+	//dup2(new_fd,STDOUT);
+	close(new_fd);
+	//printf("Fd: %d %s\n",fd,pipeout);
+  }
+ if(pipein)
+  {
+	//int fd = open(pipein,O_CREAT);
+	//printf("Fd: %d %s\n",fd,pipeout);
+  }
   if(strcmp(args[0],"cd") == 0)
   {
      int error = 0; 
@@ -111,6 +130,11 @@ void readCommand() {
       do_exit();
     }
   }
+  
+   if(pipein)
+	free(pipein);
+  if(pipeout)
+	free(pipeout);
   deleteArgs(args);
   free(args);
   free(command);
@@ -132,7 +156,7 @@ bool buildInput(char* input) {
   }
 }
 
-char** parseArgs(char* input) {
+char** parseArgs(char* input, char** pipein, char** pipeout) {
   char** arguments = (char**)calloc(MAX_NUM_ARGS, sizeof(char*));
   if (!arguments) {
     memoryError();
@@ -145,10 +169,9 @@ char** parseArgs(char* input) {
   }
   int argLength = 0;
   bool esc_mode = FALSE;
-  bool redirect_output;
   while (c != 0) {
   
-    redirect_output = FALSE;
+   
     esc_mode = FALSE;
     if (c == '\\')
     {
@@ -166,18 +189,38 @@ char** parseArgs(char* input) {
 	else 
 	{
 		printf("invalid escape character\n");
-		deleteArgs(arguments);
-		free(arguments);
-		arguments = (char**)calloc(1, sizeof(char*));
-		arguments[0]= (char*)calloc(1, sizeof(char));
-		return arguments;
+		//TODO find better way to handle this error
+		//deleteArgs(arguments);
+		//free(arguments);
+		//arguments = (char**)calloc(1, sizeof(char*));
+		//arguments[0]= (char*)calloc(1, sizeof(char));
+		//return arguments;
 	}
 		
     }
     if(c == '>' && !esc_mode)
     {
-	//TODO
+	
+	*pipeout = (char*)calloc(MAX_CMD_LENGTH, sizeof(char));
+	 if (!(*pipeout)) 
+	    memoryError();
+	  
+	int place = 0;
+        input++;
+	while (c) //TODO properly exit, instead of assuming all redirects are at the end
+	{	//TODO ignore spaces properly 
+		input++;
+		c=*input;
+		if (c!=' ')
+			(*pipeout)[place++] = c;
+	}
     }
+    if(c == '<' && !esc_mode)
+    {	
+	pipein = NULL;
+	//TODO implement
+    }
+    //TODO if *(c+1) = < or > the program will enter here. This will result in the creation of another arg with a string value of \0
     if ((c == ' ' || c == '\t') && !esc_mode) {
       if (argLength) {
         *(arg + argLength) = 0;
@@ -188,6 +231,7 @@ char** parseArgs(char* input) {
           memoryError();
         }
         argLength = 0;
+	
       }  
     } else {
       *(arg + argLength) = c;
@@ -195,6 +239,7 @@ char** parseArgs(char* input) {
     }
     c = *(++input);
   }
+   
   *(arg + argLength) = 0;
   *(arguments + argCount) = arg;
   argCount++;
