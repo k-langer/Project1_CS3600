@@ -105,15 +105,16 @@ void readCommand() {
 	
 	return;
   }
+  
   pid_t parent = fork();
-
+  
   if (parent < 0) {
     printf("we fucked up");  
     do_exit();
   }
   else if (!parent) {
     if (execvp(args[0], args)) {
-	if(args && !terminate)//!terminate)
+	if((*args)[0])//!terminate)
 	{
       printf("Error: ");
       switch(errno) {
