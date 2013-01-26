@@ -32,7 +32,8 @@ typedef int fd;
 void printPrompt();
 void readCommand();
 bool buildInput(char* input);
-char** parseArgs(char* input,char** pipein,char** pipeout);
+char** parseArgs(char* input);
+//char** parseArgs(char* input,char** pipein,char** pipeout);
 void deleteArgs(char** args);
 void memoryError();
 
@@ -78,14 +79,18 @@ void readCommand() {
   }
   char*pipein = NULL;
   char*pipeout = NULL;
-  char** args = parseArgs(command,&pipein,&pipeout);
-
+  //char** args = parseArgs(command,&pipein,&pipeout);
+    char** args = parseArgs(command); 
   if(pipeout)
   {
-	fd new_fd = open(pipeout,O_CREAT);
+	FILE *f = freopen(pipeout,"w", stdout);
+	printf("HERE\n");
+	fclose(f);
+
+	//fd new_fd = open(pipeout,O_CREAT);
 	//TODO creates the file correctly but does not yet write to it
 	//dup2(new_fd,STDOUT);
-	close(new_fd);
+	//close(new_fd);
 	//printf("Fd: %d %s\n",fd,pipeout);
   }
  if(pipein)
@@ -144,11 +149,19 @@ void readCommand() {
 bool buildInput(char* input) {
   int length = 0;
   char c = getchar();
+  char prev = c;
   while (c != '\n' && c != EOF && length <= MAX_INPUT_LENGTH) {
+  if(prev != c || c != ' ' )
+  {
     *(input + length) = c;
     length++;
-    c = getchar();
+   }
+   prev = c;	
+   c = getchar();
+   
   }
+  if(*(input + length-1) == ' ')
+	length--;
   *(input + length) = 0;
   if (c == EOF) {
     return TRUE;
@@ -156,8 +169,8 @@ bool buildInput(char* input) {
     return FALSE;
   }
 }
-
-char** parseArgs(char* input, char** pipein, char** pipeout) {
+char** parseArgs(char* input) {
+//char** parseArgs(char* input, char** pipein, char** pipeout) {
   char** arguments = (char**)calloc(MAX_NUM_ARGS, sizeof(char*));
   if (!arguments) {
     memoryError();
@@ -199,7 +212,7 @@ char** parseArgs(char* input, char** pipein, char** pipeout) {
 	}
 		
     }
-    if(c == '>' && !esc_mode)
+   /* if(c == '>' && !esc_mode)
     {
 	
 	*pipeout = (char*)calloc(MAX_CMD_LENGTH, sizeof(char));
@@ -221,7 +234,7 @@ char** parseArgs(char* input, char** pipein, char** pipeout) {
 	pipein = NULL;
 	//TODO implement
     }
-    //TODO if *(c+1) = < or > the program will enter here. This will result in the creation of another arg with a string value of \0
+    //TODO if *(c+1) = < or > the program will enter here. This will result in the creation of another arg with a string value of \0*/
     if ((c == ' ' || c == '\t') && !esc_mode) {
       if (argLength) {
         *(arg + argLength) = 0;
