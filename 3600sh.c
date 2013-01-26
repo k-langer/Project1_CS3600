@@ -31,9 +31,9 @@ typedef int fd;
 #define STDERR 2
 void printPrompt();
 void readCommand();
-bool buildInput(char* input);
+bool buildInput(char* input,char* file,char* type);
+//bool buildInput(char* input);
 char** parseArgs(char* input);
-//char** parseArgs(char* input,char** pipein,char** pipeout);
 void deleteArgs(char** args);
 void memoryError();
 
@@ -73,31 +73,44 @@ void readCommand() {
   if (!command) {
     memoryError();
   }
-  bool terminate = buildInput(command);
+  char  *file = calloc(MAX_INPUT_LENGTH + 1, sizeof(char));
+  if (!file) 
+  	memoryError();
+  char *type =  calloc(1, sizeof(char));
+  if (!type) 
+  	memoryError();
+
+  bool terminate = buildInput(command, file, type);
   if (strncmp(command, EXIT_COMMAND, strlen(EXIT_COMMAND)) == 0) {
     do_exit();
   }
-  char*pipein = NULL;
-  char*pipeout = NULL;
+
   //char** args = parseArgs(command,&pipein,&pipeout);
     char** args = parseArgs(command); 
-  if(pipeout)
+ int restore_stdout = 0;
+ int restore_stdin = 0; 
+ if(*file)
   {
-	FILE *f = freopen(pipeout,"w", stdout);
-	printf("HERE\n");
-	fclose(f);
+	//TODO fix this
+	if (*type == '>')
+	{ 
+		int f = open(file,O_CREAT); //Open a new file
+        	restore_stdout = dup(STDOUT); //keep a copy of STDOUT
+        	close(STDOUT); //Close STDOUT
+		dup(f); //Copy the same file descriptor but set it to the newly closed STDOUT
+		close(f); //Close original file
+	}
+	if (*type == '<')
+	{ 
+		int f = open(file,O_CREAT); //Open a new file
+        	restore_stdin = dup(STDIN); //keep a copy of STDOUT
+        	close(STDIN); //Close STDOUT
+		dup(f); //Copy the same file descriptor but set it to the newly closed STDOUT
+		close(f); //Close original file
+	}
+  }
 
-	//fd new_fd = open(pipeout,O_CREAT);
-	//TODO creates the file correctly but does not yet write to it
-	//dup2(new_fd,STDOUT);
-	//close(new_fd);
-	//printf("Fd: %d %s\n",fd,pipeout);
-  }
- if(pipein)
-  {
-	//int fd = open(pipein,O_CREAT);
-	//printf("Fd: %d %s\n",fd,pipeout);
-  }
+
   if(strcmp(args[0],"cd") == 0)
   {
      int error = 0; 
@@ -136,26 +149,61 @@ void readCommand() {
       do_exit();
     }
   }
-  
-   if(pipein)
-	free(pipein);
-  if(pipeout)
-	free(pipeout);
+  if(restore_stdin)
+  {
+	close(1);
+	dup(restore_stdin);
+	close(restore_stdin);
+  }
+  if(restore_stdout)
+  {
+	close(1);
+	dup(restore_stdout);
+	close(restore_stdout);
+  }
+  free(file);
+  free(type);
   deleteArgs(args);
   free(args);
   free(command);
 }
 
-bool buildInput(char* input) {
+bool buildInput(char* input, char* file, char* type) {
+
   int length = 0;
+  int file_len = 0;
   char c = getchar();
   char prev = c;
+  bool file_mode = FALSE;
   while (c != '\n' && c != EOF && length <= MAX_INPUT_LENGTH) {
-  if(prev != c || c != ' ' )
+  if (file_mode)
+  {
+	while (c != '\n' && c != EOF && file_len <= MAX_INPUT_LENGTH){
+		if (c !=  ' ')
+		{
+			*(file+file_len) = c;
+			file_len++;
+		}
+	 	c = getchar();
+	}
+	break;
+  }
+   if(c == '>')
+   {
+	*type = '>';
+	file_mode = TRUE;
+  }
+   if(c == '<')
+   {
+	*type = '<';
+	file_mode = TRUE;
+  }
+  else if(prev != c || c != ' ' )
   {
     *(input + length) = c;
     length++;
    }
+ 
    prev = c;	
    c = getchar();
    
@@ -170,7 +218,6 @@ bool buildInput(char* input) {
   }
 }
 char** parseArgs(char* input) {
-//char** parseArgs(char* input, char** pipein, char** pipeout) {
   char** arguments = (char**)calloc(MAX_NUM_ARGS, sizeof(char*));
   if (!arguments) {
     memoryError();
@@ -212,29 +259,7 @@ char** parseArgs(char* input) {
 	}
 		
     }
-   /* if(c == '>' && !esc_mode)
-    {
-	
-	*pipeout = (char*)calloc(MAX_CMD_LENGTH, sizeof(char));
-	 if (!(*pipeout)) 
-	    memoryError();
-	  
-	int place = 0;
-        input++;
-	while (c) //TODO properly exit, instead of assuming all redirects are at the end
-	{	//TODO ignore spaces properly 
-		input++;
-		c=*input;
-		if (c!=' ')
-			(*pipeout)[place++] = c;
-	}
-    }
-    if(c == '<' && !esc_mode)
-    {	
-	pipein = NULL;
-	//TODO implement
-    }
-    //TODO if *(c+1) = < or > the program will enter here. This will result in the creation of another arg with a string value of \0*/
+ 
     if ((c == ' ' || c == '\t') && !esc_mode) {
       if (argLength) {
         *(arg + argLength) = 0;
