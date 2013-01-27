@@ -96,7 +96,7 @@ void readCommand() {
 	//TODO fix this
 	if (*type == '>')
 	{ 
-		f = open(file,O_RDWR|O_CREAT,S_IRUSR|S_IWUSR); 
+		f = open(file,O_RDWR|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR); 
 		/*Open a file with the path "file" and the intention to read and write from it. */
 		/*If it does not exist create it and give read and write permissions to the user*/
         	restore_stdout = dup(STDOUT); //keep a copy of STDOUT
@@ -114,7 +114,7 @@ void readCommand() {
 	}
 	if (*type == '2')
 	{
-		f = open(file,O_RDWR|O_CREAT,S_IRUSR|S_IWUSR); 
+		f = open(file,O_RDWR|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR); 
         	restore_stderr = dup(STDERR); //keep a copy of STDOUT
         	close(STDERR); //Close STDOUT
 		dup(f); //Copy the same file descriptor but set it to the newly closed STDOUT
