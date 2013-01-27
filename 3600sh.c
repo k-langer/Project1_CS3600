@@ -94,7 +94,9 @@ void readCommand() {
 	//TODO fix this
 	if (*type == '>')
 	{ 
-		int f = open(file,O_CREAT); //Open a new file
+		int f = open(file,O_RDWR|O_CREAT,S_IRUSR|S_IWUSR); 
+		/*Open a file with the path "file" and the intention to read and write from it. */
+		/*If it does not exist create it and give read and write permissions to the user*/
         	restore_stdout = dup(STDOUT); //keep a copy of STDOUT
         	close(STDOUT); //Close STDOUT
 		dup(f); //Copy the same file descriptor but set it to the newly closed STDOUT
@@ -102,11 +104,12 @@ void readCommand() {
 	}
 	if (*type == '<')
 	{ 
-		int f = open(file,O_CREAT); //Open a new file
-        	restore_stdin = dup(STDIN); //keep a copy of STDOUT
-        	close(STDIN); //Close STDOUT
-		dup(f); //Copy the same file descriptor but set it to the newly closed STDOUT
-		close(f); //Close original file
+		int f = open(file,O_RDONLY); 
+		
+        	restore_stdin = dup(STDIN); 
+        	close(STDIN); 
+		dup(f); 
+		close(f); 
 	}
   }
 
@@ -193,7 +196,7 @@ bool buildInput(char* input, char* file, char* type) {
 	*type = '>';
 	file_mode = TRUE;
   }
-   if(c == '<')
+   else if(c == '<')
    {
 	*type = '<';
 	file_mode = TRUE;
