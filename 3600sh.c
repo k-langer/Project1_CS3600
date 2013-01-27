@@ -151,13 +151,13 @@ void readCommand() {
   }
   if(restore_stdin)
   {
-	close(1);
+	close(STDIN);
 	dup(restore_stdin);
 	close(restore_stdin);
   }
   if(restore_stdout)
   {
-	close(1);
+	close(STDOUT);
 	dup(restore_stdout);
 	close(restore_stdout);
   }
