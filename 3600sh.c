@@ -31,7 +31,7 @@ typedef int fd;
 #define STDERR 2
 void printPrompt();
 void readCommand();
-bool buildInput(char* input,char* file,char* type);
+bool buildInput(char* input,char** file,int* type);
 //bool buildInput(char* input);
 char** parseArgs(char* input);
 void deleteArgs(char** args);
@@ -73,14 +73,18 @@ void readCommand() {
   if (!command) {
     memoryError();
   }
-  char  *file = calloc(MAX_INPUT_LENGTH + 1, sizeof(char));
+  char  **file = calloc(3, sizeof(char*));
   if (!file) 
   	memoryError();
-  char *type =  calloc(1, sizeof(char));
-  if (!type) 
-  	memoryError();
+  for (int i = 0; i < 3; i++)
+  {
+	file[i] = calloc(MAX_INPUT_LENGTH + 1, sizeof(char));
+	 if (!file[i]) 
+  		memoryError();
+  }
+  int type = 0;
 
-  bool terminate = buildInput(command, file, type);
+  bool terminate = buildInput(command, file, &type);
   if (strncmp(command, EXIT_COMMAND, strlen(EXIT_COMMAND)) == 0) {
     do_exit();
   }
@@ -91,12 +95,12 @@ void readCommand() {
  int restore_stdin = 0; 
  int restore_stderr = 0; 
  int f = -1;
- if(*file)
-  {
+	
+
 	//TODO fix this
-	if (*type == '>')
+	if (file[STDOUT][0])//type==(2<<STDOUT))
 	{ 
-		f = open(file,O_RDWR|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR); 
+		f = open(file[STDOUT],O_RDWR|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR); 
 		/*Open a file with the path "file" and the intention to read and write from it. */
 		/*If it does not exist create it and give read and write permissions to the user*/
         	restore_stdout = dup(STDOUT); //keep a copy of STDOUT
@@ -104,23 +108,22 @@ void readCommand() {
 		dup(f); //Copy the same file descriptor but set it to the newly closed STDOUT
 		close(f); //Close original file
 	}
-	if (*type == '<')
+	if (file[STDIN][0])//type==(2<<STDIN))
 	{ 
-		f = open(file,O_RDONLY); 
+		f = open(file[STDIN],O_RDONLY); 
         	restore_stdin = dup(STDIN); 
         	close(STDIN); 
 		dup(f); 
 		close(f); 
 	}
-	if (*type == '2')
+	if (file[STDERR][0])//type==(2<<STDERR))
 	{
-		f = open(file,O_RDWR|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR); 
+		f = open(file[STDERR],O_RDWR|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR); 
         	restore_stderr = dup(STDERR); //keep a copy of STDOUT
         	close(STDERR); //Close STDOUT
 		dup(f); //Copy the same file descriptor but set it to the newly closed STDOUT
 		close(f); //Close original file
 	}
-  }
 
 
   if(strcmp(args[0],"cd") == 0)
@@ -179,49 +182,62 @@ void readCommand() {
 	dup(restore_stderr);
 	close(restore_stderr);
   }
+
+  for (int i = 0; i < 3; i++)
+	free(file[i]);
   free(file);
-  free(type);
   deleteArgs(args);
   free(args);
   free(command);
 }
 
-bool buildInput(char* input, char* file, char* type) {
+bool buildInput(char* input, char** file, int* type) {
 
   int length = 0;
-  int file_len = 0;
+  
   char c = getchar();
   char prev = c;
   bool file_mode = FALSE;
+  int index;
   while (c != '\n' && c != EOF && length <= MAX_INPUT_LENGTH) {
   if (file_mode)
   {
-	while (c != '\n' && c != EOF && file_len <= MAX_INPUT_LENGTH){
+	int file_len = 0;
+	while (c != '<' && c != '>' && c != '\n' && c != EOF && file_len <= MAX_INPUT_LENGTH){
 		if (c !=  ' ')
 		{
-			*(file+file_len) = c;
+			*(file[index]+file_len) = c;
 			file_len++;
 		}
 	 	c = getchar();
 	}
-	break;
+	if ( c != '<' && c != '>')
+		break;
   }
+  file_mode = FALSE;
+  index = 0;
+ //printf("HERE: %c\n",c);
    if(c == '>')
    {
 	if (prev == '2')
 	{
 		*(input + length) = 0;
 		length--;
-		*type = '2';
+  	 	index = STDERR;
+		*type += 4;
 	}
 	else 
-		*type = '>';
+	{
+		index = STDOUT;
+		*type += 2;
+	}
 	file_mode = TRUE;
 	
   }
    else if(c == '<')
    {
-	*type = '<';
+	index = STDIN;
+	*type += 1;
 	file_mode = TRUE;
   }
   else if(prev != c || c != ' ' )
