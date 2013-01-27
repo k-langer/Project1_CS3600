@@ -31,7 +31,7 @@ typedef int fd;
 #define STDERR 2
 void printPrompt();
 void readCommand();
-bool buildInput(char* input,char** file,int* type);
+bool buildInput(char* input,char** file);
 //bool buildInput(char* input);
 char** parseArgs(char* input);
 void deleteArgs(char** args);
@@ -82,19 +82,19 @@ void readCommand() {
 	 if (!file[i]) 
   		memoryError();
   }
-  int type = 0;
 
-  bool terminate = buildInput(command, file, &type);
+
+  bool terminate = buildInput(command, file);
   if (strncmp(command, EXIT_COMMAND, strlen(EXIT_COMMAND)) == 0) {
     do_exit();
   }
 
-  //char** args = parseArgs(command,&pipein,&pipeout);
+
     char** args = parseArgs(command); 
- int restore_stdout = 0;
- int restore_stdin = 0; 
- int restore_stderr = 0; 
- int f = -1;
+ 	int restore_stdout = 0;
+	 int restore_stdin = 0; 
+	 int restore_stderr = 0; 
+ 	int f = -1;
 	
 
 	//TODO fix this
@@ -191,7 +191,7 @@ void readCommand() {
   free(command);
 }
 
-bool buildInput(char* input, char** file, int* type) {
+bool buildInput(char* input, char** file) {
 
   int length = 0;
   
@@ -216,7 +216,7 @@ bool buildInput(char* input, char** file, int* type) {
   }
   file_mode = FALSE;
   index = 0;
- //printf("HERE: %c\n",c);
+ 
    if(c == '>')
    {
 	if (prev == '2')
@@ -224,12 +224,11 @@ bool buildInput(char* input, char** file, int* type) {
 		*(input + length) = 0;
 		length--;
   	 	index = STDERR;
-		*type += 4;
 	}
 	else 
 	{
 		index = STDOUT;
-		*type += 2;
+		
 	}
 	file_mode = TRUE;
 	
@@ -237,7 +236,6 @@ bool buildInput(char* input, char** file, int* type) {
    else if(c == '<')
    {
 	index = STDIN;
-	*type += 1;
 	file_mode = TRUE;
   }
   else if(prev != c || c != ' ' )
