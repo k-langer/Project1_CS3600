@@ -42,7 +42,7 @@ my @tries = (	"ls foo\\ bar",
 		"ls -altr a>b b<a",
 		"ls -altr a\\tcad",
 		"ls -altr /etc &",
-		"ls -altr > $t1\ncat $t1\nls -altr > $t1\ncat $t1",
+		"ls -altr /bin > $t1\ncat $t1\nls -altr /bin > $t1\ncat $t1",
                 "ls -altr /bin < $t1 > $t2 2> $t3\ncat $t1\ncat $t2\ncat $t3",
 		"ls a b c d e f g h i j k",
 		"ls a b c d e f g h i j k l m n o p q r s t u v w x y z");
