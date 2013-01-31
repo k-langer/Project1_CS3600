@@ -32,7 +32,6 @@ typedef int fd;
 void printPrompt();
 void readCommand();
 bool buildInput(char* input,char** file);
-//bool buildInput(char* input);
 char** parseArgs(char* input);
 void deleteArgs(char** args);
 void memoryError();
@@ -54,16 +53,17 @@ int main(int argc, char*argv[]) {
 
   return 0;
 }
+
 void printPrompt() {
   char* username = getenv("USER");
   char* hostname = (char*)calloc(MAX_HOSTNAME_LENGTH + 1, sizeof(char));
   if (!hostname) {
     memoryError();
   }
+
   gethostname(hostname, MAX_HOSTNAME_LENGTH);
   *(hostname + MAX_HOSTNAME_LENGTH) = 0;
   char* directory = getcwd(NULL,MAX_DIR_LENGTH);
-  //char* directory = getenv("PWD");
   printf("%s@%s:%s> ", username, hostname, directory);
   free(hostname);
 }
@@ -73,16 +73,19 @@ void readCommand() {
   if (!command) {
     memoryError();
   }
+
   char  **file = calloc(3, sizeof(char*));
-  if (!file) 
+  if (!file) {
   	memoryError();
-  for (int i = 0; i < 3; i++)
-  {
-	file[i] = calloc(MAX_INPUT_LENGTH + 1, sizeof(char));
-	 if (!file[i]) 
-  		memoryError();
   }
 
+  for (int i = 0; i < 3; i++)
+  {
+    file[i] = calloc(MAX_INPUT_LENGTH + 1, sizeof(char));
+    if (!file[i]) {
+      memoryError();
+    }
+  }
 
   bool terminate = buildInput(command, file);
   if (strncmp(command, EXIT_COMMAND, strlen(EXIT_COMMAND)) == 0) {
@@ -90,10 +93,10 @@ void readCommand() {
   }
 
 
-    char** args = parseArgs(command); 
+  char** args = parseArgs(command); 
  	int restore_stdout = 0;
-	 int restore_stdin = 0; 
-	 int restore_stderr = 0; 
+	int restore_stdin = 0; 
+	int restore_stderr = 0; 
  	int f = -1;
 	
 
@@ -147,44 +150,44 @@ void readCommand() {
   }
   else if (!parent) {
     if (execvp(args[0], args)) {
-	if((*args)[0])//!terminate)
-	{
-      printf("Error: ");
-      switch(errno) {
-        case 1: printf("Permission denied.\n"); break;
-        case 2: printf("Command not found.\n"); break;
-        default: printf("Unkown error.\n"); break;
-	}
+    	if((*args)[0]) {
+          printf("Error: ");
+          switch(errno) {
+            case 1: printf("Permission denied.\n"); break;
+            case 2: printf("Command not found.\n"); break;
+            default: printf("Unkown error.\n"); break;
+    	    }
       }
     }
     exit(0);
   } else {
     waitpid(parent, NULL, 0);
-   if (terminate) {
+    if (terminate) {
       do_exit();
     }
   }
   if(restore_stdin)
   {
-	close(STDIN);
-	dup(restore_stdin);
-	close(restore_stdin);
+  	close(STDIN);
+  	dup(restore_stdin);
+  	close(restore_stdin);
   }
   if(restore_stdout)
   {
-	close(STDOUT);
-	dup(restore_stdout);
-	close(restore_stdout);
+  	close(STDOUT);
+  	dup(restore_stdout);
+  	close(restore_stdout);
   }
   if(restore_stderr)
   {
-	close(STDERR);
-	dup(restore_stderr);
-	close(restore_stderr);
+  	close(STDERR);
+  	dup(restore_stderr);
+  	close(restore_stderr);
   }
 
-  for (int i = 0; i < 3; i++)
-	free(file[i]);
+  for (int i = 0; i < 3; i++) {
+    free(file[i]);
+  }
   free(file);
   deleteArgs(args);
   free(args);
@@ -201,78 +204,71 @@ bool buildInput(char* input, char** file) {
   int index;
   while (c != '\n' && c != EOF && length <= MAX_INPUT_LENGTH) 
   {
- 	 while (c == '\\')
-	  {
-		c = getchar();
-		switch(c) {
-		case '&':
-		case '>':
-		case '<':
-		case '\\':
-			*(input + length) = c;
-    			length++;
-			break;	
-		case ' ':
-			*(input + length) = 7; /*7 is unsed in ASCII in the shell as it is the bell*/
-    			length++;		      /* Assigning here for easier parsing later*/
-			break;
-		default:
-			printf("Invalid escape character\n");
-			break;
-		}
-		c = getchar();
+    while (c == '\\') {
+  		c = getchar();
+  		switch(c) {
+    		case '&':
+    		case '>':
+    		case '<':
+    		case '\\':
+    			*(input + length) = c;
+        	length++;
+    			break;	
+    		case ' ':
+    			*(input + length) = 7; /*7 is unsed in ASCII in the shell as it is the bell*/
+        	length++;		      /* Assigning here for easier parsing later*/
+    			break;
+    		default:
+    			printf("Invalid escape character\n");
+    			break;
+  		}
+  		c = getchar();
 	
   	}
-  if (file_mode)
-  {
-	int file_len = 0;
-	while (c != '<' && c != '>' && c != '\n' && c != EOF && file_len <= MAX_INPUT_LENGTH){
-		if (c !=  ' ')
-		{
-			*(file[index]+file_len) = c;
-			file_len++;
-		}
-	 	c = getchar();
-	}
-	if ( c != '<' && c != '>')
-		break;
-  }
-  file_mode = FALSE;
-  index = 0;
- 
-   if(c == '>')
-   {
-	if (prev == '2')
-	{
-		*(input + length) = 0;
-		length--;
-  	 	index = STDERR;
-	}
-	else 
-	{
-		index = STDOUT;
-		
-	}
-	file_mode = TRUE;
-	
-  }
-   else if(c == '<')
-   {
-	index = STDIN;
-	file_mode = TRUE;
-  }
-  else if(prev != c || c != ' ' )
-  {
-    *(input + length) = c;
-    length++;
-   }
- 
-   prev = c;	
-   c = getchar();
+    if (file_mode)
+    {
+    	int file_len = 0;
+    	while (c != '<' && c != '>' && c != '\n' && c != EOF && file_len <= MAX_INPUT_LENGTH){
+    		if (c !=  ' ') {
+    			*(file[index]+file_len) = c;
+    			file_len++;
+    		}
+    	 	c = getchar();
+  	  }
+	    if ( c != '<' && c != '>') {
+		    break;
+      }
+    }
+    file_mode = FALSE;
+    index = 0;
+   
+    if(c == '>')
+    {
+    	if (prev == '2')
+    	{
+    		*(input + length) = 0;
+    		length--;
+      	 	index = STDERR;
+    	} else {
+        index = STDOUT;
+  		}
+  	  file_mode = TRUE;
+    } else if(c == '<') {
+    	index = STDIN;
+    	file_mode = TRUE;
+    } else if(prev != c || c != ' ' ) {
+      *(input + length) = c;
+      length++;
+    }
+   
+    prev = c;	
+    c = getchar();
    
   }
-  if(*(input + length-1) == ' ')
-	length--;
+  
+  if(*(input + length-1) == ' ') {
+    length--;
+  }
   *(input + length) = 0;
   if (c == EOF) {
     return TRUE;
@@ -294,14 +290,12 @@ char** parseArgs(char* input) {
   int argLength = 0;
   bool esc_mode = FALSE;
   while (c != 0) {
-  
-   
     esc_mode = FALSE;
     while (c == 7) //defined in build input
     {
-	*(arg + argLength) = ' ';
-     	 argLength++;
-	 c = *(++input);
+	    *(arg + argLength) = ' ';
+     	argLength++;
+	    c = *(++input);
     }
  
     if ((c == ' ' || c == '\t') && !esc_mode) {
@@ -314,7 +308,6 @@ char** parseArgs(char* input) {
           memoryError();
         }
         argLength = 0;
-	
       }  
     } else {
       *(arg + argLength) = c;
