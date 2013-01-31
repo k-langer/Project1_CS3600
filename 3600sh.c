@@ -199,7 +199,30 @@ bool buildInput(char* input, char** file) {
   char prev = c;
   bool file_mode = FALSE;
   int index;
-  while (c != '\n' && c != EOF && length <= MAX_INPUT_LENGTH) {
+  while (c != '\n' && c != EOF && length <= MAX_INPUT_LENGTH) 
+  {
+ 	 while (c == '\\')
+	  {
+		c = getchar();
+		switch(c) {
+		case '&':
+		case '>':
+		case '<':
+		case '\\':
+			*(input + length) = c;
+    			length++;
+			break;	
+		case ' ':
+			*(input + length) = 7; /*7 is unsed in ASCII in the shell as it is the bell*/
+    			length++;		      /* Assigning here for easier parsing later*/
+			break;
+		default:
+			printf("Invalid escape character\n");
+			break;
+		}
+		c = getchar();
+	
+  	}
   if (file_mode)
   {
 	int file_len = 0;
@@ -274,30 +297,11 @@ char** parseArgs(char* input) {
   
    
     esc_mode = FALSE;
-    if (c == '\\')
+    while (c == 7) //defined in build input
     {
-	input++;
-	c = *input;
-	if (c == '\\' || c == '>' || c == '<' ||  c == '&' || c == ' ')
-	{
-		esc_mode = TRUE;
-	}
-	else if (c =='n' || c == 't')
-	{
-		input++;
-		c=*input;
-	}
-	else 
-	{
-		printf("invalid escape character\n");
-		//TODO find better way to handle this error
-		//deleteArgs(arguments);
-		//free(arguments);
-		//arguments = (char**)calloc(1, sizeof(char*));
-		//arguments[0]= (char*)calloc(1, sizeof(char));
-		//return arguments;
-	}
-		
+	*(arg + argLength) = ' ';
+     	 argLength++;
+	 c = *(++input);
     }
  
     if ((c == ' ' || c == '\t') && !esc_mode) {
