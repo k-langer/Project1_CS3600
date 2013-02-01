@@ -29,9 +29,13 @@ typedef int fd;
 #define STDIN 0
 #define STDOUT 1
 #define STDERR 2
+
+typedef char status;
+#define INVALID_SYNTAX -1
+#define INVALID_ESCAPE -2
 void printPrompt();
 void readCommand();
-bool buildInput(char* input,char** file);
+bool buildInput(char* input,char** file, status* error);
 char** parseArgs(char* input);
 void deleteArgs(char** args);
 void memoryError();
@@ -86,8 +90,19 @@ void readCommand() {
       memoryError();
     }
   }
+  status error_handle = 0;
+  bool terminate = buildInput(command, file,&error_handle);
+  switch(error_handle){
+	case INVALID_SYNTAX:
+		printf("Error: Invalid syntax.\n");
+		return;
+	case INVALID_ESCAPE:
+		printf("Error: Unrecognized escape sequence.\n");
+		return;
+	}
 
-  bool terminate = buildInput(command, file);
+
+
   if (strncmp(command, EXIT_COMMAND, strlen(EXIT_COMMAND)) == 0) {
     do_exit();
   }
@@ -194,7 +209,7 @@ void readCommand() {
   free(command);
 }
 
-bool buildInput(char* input, char** file) {
+bool buildInput(char* input, char** file, status* error) {
 
   int length = 0;
   
@@ -219,10 +234,11 @@ bool buildInput(char* input, char** file) {
         	length++;		      /* Assigning here for easier parsing later*/
     			break;
     		default:
-    			printf("Invalid escape character\n");
-    			break;
+    			*error = INVALID_ESCAPE;
   		}
   		c = getchar();
+		if (c == '\n')
+			return FALSE;
 	
   	}
     if (file_mode)
@@ -246,14 +262,20 @@ bool buildInput(char* input, char** file) {
     {
     	if (prev == '2')
     	{
+		if(file[STDERR][0])
+			*error = INVALID_SYNTAX;
     		*(input + length) = 0;
     		length--;
       	 	index = STDERR;
     	} else {
+	if(file[STDOUT][0])
+		*error = INVALID_SYNTAX;
         index = STDOUT;
   		}
   	  file_mode = TRUE;
     } else if(c == '<') {
+	if(file[STDIN][0] || file[STDERR][0] || file[STDOUT][0])
+		*error = INVALID_SYNTAX;
     	index = STDIN;
     	file_mode = TRUE;
     } else if(prev != c || c != ' ' ) {
