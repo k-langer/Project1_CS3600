@@ -1,1 +1,4 @@
-./.test | grep FAIL | sed -e "s/'//g" -e "s/ *\[FAIL\]//g" -e "s/.*script *//g" | tee Failing_Tests
+./.test | grep FAIL | sed -e "s/'//g" -e "s/ *\[FAIL\]//g" -e "s/.*script *//g" -e 's/\\/\\\\/g' | tee Failing_Tests 
+echo ""
+echo "Stats: "
+wc Failing_Tests

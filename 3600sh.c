@@ -31,8 +31,9 @@ typedef int fd;
 #define STDERR 2
 
 typedef char status;
-#define INVALID_SYNTAX -1
-#define INVALID_ESCAPE -2
+#define INVALID_SYNTAX 1
+#define INVALID_ESCAPE 2
+#define FOREGROUND 4
 void printPrompt();
 void readCommand();
 bool buildInput(char* input,char** file, status* error);
@@ -92,7 +93,7 @@ void readCommand() {
   }
   status error_handle = 0;
   bool terminate = buildInput(command, file,&error_handle);
-  switch(error_handle){
+  switch(error_handle&(INVALID_SYNTAX|INVALID_ESCAPE)){
 	case INVALID_SYNTAX:
 		printf("Error: Invalid syntax.\n");
 		return;
@@ -241,6 +242,14 @@ bool buildInput(char* input, char** file, status* error) {
 			return FALSE;
 	
   	}
+   if(c == '&')
+   {
+	c = getchar();
+	if(c == ' ' || c == '\t' || c == '\n' || c == EOF)
+		*error |= FOREGROUND;
+	else
+		*error = INVALID_SYNTAX;
+  }	
     if (file_mode)
     {
     	int file_len = 0;
