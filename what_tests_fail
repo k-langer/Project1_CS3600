@@ -1,0 +1,1 @@
+./.test | grep FAIL | sed -e "s/'//g" -e "s/ *\[FAIL\]//g" -e "s/.*script *//g" | tee Failing_Tests
