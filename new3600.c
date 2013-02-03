@@ -19,7 +19,6 @@
 #define MAX_CMD_LENGTH 100
 #define MAX_HOSTNAME_LENGTH 100
 #define MAX_INPUT_LENGTH 100
-#define MAX_NUM_ARGS 10
 #define EXIT_COMMAND "exit"
 #define NUM_ARGS_STEP 5
 #define CMD_WORD_CHUNK 10
@@ -44,11 +43,11 @@ typedef int status;
 
 void printPrompt();
 
-char** readArgs(status* error);
+char** readArgs(status* error, char** file);
 void deleteArgs(char** args);
 void memoryError();
 void readCommand();
-bool addWord(char* word, char*** arguments, int* argCount, int* argSteps, status* error);
+fd addWord(char* word, char*** arguments, int* argCount, int* argSteps, status* error, fd redirect, char** file);
 void handleAmpersand(status* error);
 
 int main(int argc, char*argv[]) {
@@ -99,7 +98,7 @@ void readCommand() {
 
 	status parseStatus = 0;
 	
-	char** args = readArgs(&parseStatus); 
+	char** args = readArgs(&parseStatus, file); 
 	bool terminate = EOF_FOUND & parseStatus;
 
 	switch(parseStatus & (INVALID_SYNTAX | INVALID_ESCAPE)){
@@ -219,7 +218,7 @@ void readCommand() {
 }
 
 
-char** readArgs(status* error) {
+char** readArgs(status* error, char** file) {
 	char** arguments = (char**)calloc(NUM_ARGS_STEP, sizeof(char*));
 	if (!arguments) {
 		memoryError();
@@ -233,6 +232,7 @@ char** readArgs(status* error) {
 	}
 	int wordChunks = 1;
 	int wordLength = 0;
+	fd redirect = -1;
 
 	while (c != '\n' && c != EOF) {
 		if (c == '\t' || c == ' ') {
@@ -240,7 +240,7 @@ char** readArgs(status* error) {
 				c = getchar();
 			}
 			cmdWord[wordLength] = 0;
-			addWord(cmdWord, &arguments, &argCount, &argSteps, error);
+			redirect = addWord(cmdWord, &arguments, &argCount, &argSteps, error, redirect, file);
 			wordChunks = 1;
 			wordLength = 0;
 			cmdWord = (char*)calloc(CMD_WORD_CHUNK + 1, sizeof(char));
@@ -290,7 +290,7 @@ char** readArgs(status* error) {
 	}
 	if (wordLength) {
 		cmdWord[wordLength] = 0;
-		addWord(cmdWord, &arguments, &argCount, &argSteps, error);
+		redirect = addWord(cmdWord, &arguments, &argCount, &argSteps, error, redirect, file);
 	}
 	if (c == EOF) {
 		(*error) |= EOF_FOUND;
@@ -298,14 +298,42 @@ char** readArgs(status* error) {
 	return arguments;
 }
 
-bool addWord(char* word, char*** arguments, int* argCount, int* argSteps, status* error) {
-	if (strncmp(word, "<", 1) == 0) {
-		*error |= REDIR_STDIN;
+fd addWord(char* word, char*** arguments, int* argCount, int* argSteps, status* error, fd redirect, char** file) {
+	if (redirect != -1) {
+		if (strncmp(word, "<", 1) == 0 || strncmp(word, ">", 1) == 0 || strncmp("word", "2>", 2) == 0) {
+			*error |= INVALID_SYNTAX;
+		}
+		file[redirect] = word;
+		return -1;
+	} else if (strncmp(word, "<", 1) == 0) {
+		if (file[STDIN][0]) {
+			*error |= INVALID_SYNTAX;
+			return -1;
+		} else {
+			*error |= REDIR_STDIN;
+			return STDIN;
+		}
 	} else if (strncmp(word, ">", 1) == 0) {
-		*error |= REDIR_STDOUT;
+		if (file[STDOUT][0]) {
+			*error |= INVALID_SYNTAX;
+			return -1;
+		} else {
+			*error |= REDIR_STDOUT;
+			return STDOUT;
+		}
 	} else if (strncmp(word, "2>", 2) == 0) {
-		*error |= STDERR;
+		if (file[STDERR][0]) {
+			*error |= INVALID_SYNTAX;
+			return -1;
+		} else {
+			*error |= STDERR;
+			return STDERR;
+		}
 	} else {
+		if (file[STDERR][0] || file[STDOUT][0] || file[STDIN][0]) {
+			*error |= INVALID_SYNTAX;
+			return -1;
+		}
 		if (*argCount == (*argSteps * NUM_ARGS_STEP)) {
 			(*argSteps)++;
 			char** newArguments = (char**)calloc(*argSteps * NUM_ARGS_STEP, sizeof(char*));
@@ -318,8 +346,9 @@ bool addWord(char* word, char*** arguments, int* argCount, int* argSteps, status
 		}
 		(*arguments)[*argCount] = word;
 		(*argCount)++;
+		return -1;
 	}
-	return TRUE;
+
 }
 
 void handleAmpersand(status* error) {
