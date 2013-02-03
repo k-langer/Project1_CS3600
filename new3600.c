@@ -35,7 +35,7 @@ typedef int fd;
 typedef int status;
 #define INVALID_SYNTAX 1
 #define INVALID_ESCAPE 2
-#define FOREGROUND 4
+#define BACKGROUND 4
 #define EOF_FOUND 8
 #define REDIR_STDOUT 16
 #define REDIR_STDIN 32
@@ -185,10 +185,12 @@ void readCommand() {
     }
     exit(0);
   } else {
-    waitpid(parent, NULL, 0);
-    if (terminate) {
-      do_exit();
-    }
+	if (!(parseStatus & BACKGROUND)) { 
+    		waitpid(parent, NULL, 0);
+	}
+    	if (terminate) {
+      		do_exit();
+   	}
   }
   if(restore_stdin)
   {
@@ -273,6 +275,7 @@ char** readArgs(status* error, char** file) {
 		}
 		if (c == '&') {
 			handleAmpersand(error);
+			break;
 		}
 		if (wordLength == CMD_WORD_CHUNK * wordChunks) {
 			wordChunks++;
@@ -359,6 +362,7 @@ void handleAmpersand(status* error) {
 	if (c != '\n' && c != EOF) {
 		(*error) |= INVALID_SYNTAX;
 	}
+	(*error) |= BACKGROUND;
 }
 
 void deleteArgs(char** args) {
