@@ -1,12 +1,10 @@
 
 /**
  * CS3600, Spring 2013
- * Project 1 Starter Code
- * (c) 2013 Alan Mislove
+ * Project 1 - Team EECE
+ * Javier Muhrer and Kevin Langer
  *
- * You should use this (very simple) starter code as a basis for 
- * building your shell.  Please see the project handout for more
- * details.
+ * A (very) simple shell following the specs of project 1
  */
 
 #include "3600sh.h"
@@ -32,7 +30,7 @@ typedef int fd;
 #define STDOUT 1
 #define STDERR 2
 
-typedef int status;
+typedef char status;
 #define INVALID_SYNTAX 1
 #define INVALID_ESCAPE 2
 #define BACKGROUND 4
@@ -77,7 +75,8 @@ void printPrompt() {
 
   gethostname(hostname, MAX_HOSTNAME_LENGTH);
   *(hostname + MAX_HOSTNAME_LENGTH) = 0;
-  char* directory = getcwd(NULL,MAX_DIR_LENGTH);
+  char* directory = getcwd(NULL,MAX_DIR_LENGTH); 
+   //getcwd used here, because dir changes in this shell.
   printf("%s@%s:%s> ", username, hostname, directory);
   free(hostname);
 }
@@ -101,7 +100,7 @@ void readCommand() {
 	char** args = readArgs(&parseStatus, file); 	
 	
 	bool terminate = EOF_FOUND & parseStatus;
-
+	//Bit masking is used to use a single value for status.
 	switch(parseStatus & (INVALID_SYNTAX | INVALID_ESCAPE)){
 		case INVALID_SYNTAX:
 			printf("Error: Invalid syntax.\n");
@@ -130,16 +129,18 @@ void readCommand() {
 	
 	
 	
-	if (parseStatus & REDIR_STDOUT)//type==(2<<STDOUT))
+	if (parseStatus & REDIR_STDOUT)
 	{ 
+		/*open afile with read and write permissions for the user. */
+		/*Create it if needed, and truncate it if opened*/
 		f = open(file[STDOUT],O_RDWR|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR); 
-		if (f == -1)
+		if (f == -1) //-1 indicates that there was a problem with the file
 		{
 			printf("Error: Invalid syntax.\n");
-			if (terminate) {
+			if (terminate) {//if it is EOF, terminate
 				do_exit();
 			}
-			return;
+			return; //otherwise, print another prompt
 		}
 		/*Open a file with the path "file" and the intention to read and write from it. */
 		/*If it does not exist create it and give read and write permissions to the user*/
@@ -148,7 +149,7 @@ void readCommand() {
 		dup(f); //Copy the same file descriptor but set it to the newly closed STDOUT
 		close(f); //Close original file
 	}
-	if (parseStatus & REDIR_STDERR)//type==(2<<STDERR))
+	if (parseStatus & REDIR_STDERR)
 	{
 		f = open(file[STDERR],O_RDWR|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR); 
 		if (f == -1)
@@ -166,6 +167,8 @@ void readCommand() {
 	}
 	if (parseStatus & REDIR_STDIN)//type==(2<<STDIN))
 	{ 
+		/*Do not create a file, as it would be empty and useless to STDIN*/
+		/*Open as read only because it is an input source*/
 		f = open(file[STDIN],O_RDONLY); 
 		if (f == -1)
 		{
@@ -197,7 +200,7 @@ void readCommand() {
   pid_t parent = fork();
   
   if (parent < 0) {
-    printf("we fucked up");  
+    printf("Error: process creation failed");  
     do_exit();
   }
 
@@ -205,7 +208,7 @@ void readCommand() {
     if (execvp(args[0], args)) {
     	if((*args)[0]) {
           printf("Error: ");
-          switch(errno) {
+          switch(errno) { //based on values in `man errno`
             case 1: printf("Permission denied.\n"); break;
             case 2: printf("Command not found.\n"); break;
 	    case 13: printf("Permission denied.\n"); break;
@@ -215,7 +218,7 @@ void readCommand() {
     }
     exit(0);
   } else {
-	if (!(parseStatus & BACKGROUND)) { 
+	if (!(parseStatus & BACKGROUND)) {  
     		waitpid(parent, NULL, 0);
 	}
     	if (terminate) {
@@ -305,7 +308,8 @@ char** readArgs(status* error, char** file) {
 			c = getchar();
 			continue;
 		}
-		if (c == '&' && ~(*error&BACKGROUND)) {
+		//Picks up any &'s that are not escaped
+		if (c == '&' && ~(*error&BACKGROUND)) { 
 			if (*error&BACKGROUND)
 				*error|=INVALID_SYNTAX;
 			handleAmpersand(error,&c);	
