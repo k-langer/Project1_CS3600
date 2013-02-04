@@ -335,7 +335,7 @@ char** readArgs(status* error, char** file) {
 
 fd addWord(char* word, char*** arguments, int* argCount, int* argSteps, status* error, fd redirect, char** file) {
 	if (redirect != -1) {
-		if (strncmp(word, "<", 1) == 0 || strncmp(word, ">", 1) == 0 || strncmp("word", "2>", 2) == 0) {
+		if (strncmp(word, "<", 1) == 0 || strncmp(word, ">", 1) == 0 || strncmp(word, "2>", 2) == 0) {
 			*error |= INVALID_SYNTAX;
 		}
 		file[redirect] = word;
