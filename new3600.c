@@ -277,7 +277,7 @@ char** readArgs(status* error, char** file) {
 					continue;
 				default:
 					*error |= INVALID_ESCAPE;
-					return NULL;
+					//return NULL;
 			}
 			cmdWord[wordLength] = c;
 			wordLength++;
