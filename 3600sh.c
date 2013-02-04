@@ -1,3 +1,4 @@
+
 /**
  * CS3600, Spring 2013
  * Project 1 Starter Code
@@ -18,8 +19,9 @@
 #define MAX_CMD_LENGTH 100
 #define MAX_HOSTNAME_LENGTH 100
 #define MAX_INPUT_LENGTH 100
-#define MAX_NUM_ARGS 10
 #define EXIT_COMMAND "exit"
+#define NUM_ARGS_STEP 5
+#define CMD_WORD_CHUNK 10
 
 typedef char bool;
 #define TRUE 1
@@ -30,16 +32,23 @@ typedef int fd;
 #define STDOUT 1
 #define STDERR 2
 
-typedef char status;
+typedef int status;
 #define INVALID_SYNTAX 1
 #define INVALID_ESCAPE 2
-#define FOREGROUND 4
+#define BACKGROUND 4
+#define EOF_FOUND 8
+#define REDIR_STDOUT 16
+#define REDIR_STDIN 32
+#define REDIR_STDERR 64
+
 void printPrompt();
-void readCommand();
-bool buildInput(char* input,char** file, status* error);
-char** parseArgs(char* input);
+
+char** readArgs(status* error, char** file);
 void deleteArgs(char** args);
 void memoryError();
+void readCommand();
+fd addWord(char* word, char*** arguments, int* argCount, int* argSteps, status* error, fd redirect, char** file);
+void handleAmpersand(status* error, char* next);
 
 int main(int argc, char*argv[]) {
   // Code which sets stdout to be unbuffered
@@ -47,7 +56,7 @@ int main(int argc, char*argv[]) {
   USE(argc);
   USE(argv);
   setvbuf(stdout, NULL, _IONBF, 0); 
-  
+
   // Main loop that reads a command and executes it
   while (1) {         
     // You should issue the prompt here
@@ -74,52 +83,64 @@ void printPrompt() {
 }
 
 void readCommand() {
-  char* command = calloc(MAX_INPUT_LENGTH + 1, sizeof(char));
-  if (!command) {
-    memoryError();
-  }
+	char  **file = calloc(3, sizeof(char*));
+  	if (!file) {
+  		memoryError();
+  	}
 
-  char  **file = calloc(3, sizeof(char*));
-  if (!file) {
-  	memoryError();
-  }
-
-  for (int i = 0; i < 3; i++)
-  {
-    file[i] = calloc(MAX_INPUT_LENGTH + 1, sizeof(char));
-    if (!file[i]) {
-      memoryError();
-    }
-  }
-  status error_handle = 0;
-  bool terminate = buildInput(command, file,&error_handle);
-  switch(error_handle&(INVALID_SYNTAX|INVALID_ESCAPE)){
-	case INVALID_SYNTAX:
-		printf("Error: Invalid syntax.\n");
-		return;
-	case INVALID_ESCAPE:
-		printf("Error: Unrecognized escape sequence.\n");
-		return;
+	for (int i = 0; i < 3; i++)
+	{
+	    file[i] = calloc(MAX_INPUT_LENGTH + 1, sizeof(char));
+	    if (!file[i]) {
+	      	memoryError();
+	    }
 	}
 
+	status parseStatus = 0;
+	
+	char** args = readArgs(&parseStatus, file); 	
+	
+	bool terminate = EOF_FOUND & parseStatus;
 
+	switch(parseStatus & (INVALID_SYNTAX | INVALID_ESCAPE)){
+		case INVALID_SYNTAX:
+			printf("Error: Invalid syntax.\n");
+			if (terminate)
+				do_exit();			
+			return;
+		case INVALID_ESCAPE:
+			printf("Error: Unrecognized escape sequence.\n");
+			if (terminate)
+				do_exit();			
+			return;
+	}
 
-  if (strncmp(command, EXIT_COMMAND, strlen(EXIT_COMMAND)) == 0) {
-    do_exit();
-  }
-
-
-  char** args = parseArgs(command); 
+	if (args[0]) {
+		if (args[1] == NULL && strncmp(args[0], EXIT_COMMAND, strlen(EXIT_COMMAND)) == 0) {
+			do_exit();
+		}
+	} else {
+		//do_exit();
+	}
+  
  	int restore_stdout = 0;
 	int restore_stdin = 0; 
 	int restore_stderr = 0; 
  	int f = -1;
 	
 
-	//TODO fix this
-	if (file[STDOUT][0])//type==(2<<STDOUT))
+	
+	if (parseStatus & REDIR_STDOUT)//type==(2<<STDOUT))
 	{ 
 		f = open(file[STDOUT],O_RDWR|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR); 
+		if (f == -1)
+		{
+			printf("Error: Invalid syntax.\n");
+			if (terminate) {
+				do_exit();
+			}
+			return;
+		}
 		/*Open a file with the path "file" and the intention to read and write from it. */
 		/*If it does not exist create it and give read and write permissions to the user*/
         	restore_stdout = dup(STDOUT); //keep a copy of STDOUT
@@ -127,25 +148,40 @@ void readCommand() {
 		dup(f); //Copy the same file descriptor but set it to the newly closed STDOUT
 		close(f); //Close original file
 	}
-	if (file[STDIN][0])//type==(2<<STDIN))
-	{ 
-		f = open(file[STDIN],O_RDONLY); 
-        	restore_stdin = dup(STDIN); 
-        	close(STDIN); 
-		dup(f); 
-		close(f); 
-	}
-	if (file[STDERR][0])//type==(2<<STDERR))
+	if (parseStatus & REDIR_STDERR)//type==(2<<STDERR))
 	{
 		f = open(file[STDERR],O_RDWR|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR); 
+		if (f == -1)
+		{
+			printf("Error: Invalid syntax.\n");
+			if (terminate) {
+				do_exit();
+			}
+			return;
+		}
         	restore_stderr = dup(STDERR); //keep a copy of STDOUT
         	close(STDERR); //Close STDOUT
 		dup(f); //Copy the same file descriptor but set it to the newly closed STDOUT
 		close(f); //Close original file
 	}
+	if (parseStatus & REDIR_STDIN)//type==(2<<STDIN))
+	{ 
+		f = open(file[STDIN],O_RDONLY); 
+		if (f == -1)
+		{
+			printf("Error: Unable to open redirection file.\n");
+			if (terminate) {
+				do_exit();
+			}
+			return;
+		}
+        	restore_stdin = dup(STDIN); 
+        	close(STDIN); 
+		dup(f); 
+		close(f); 
+	}
 
-
-  if(strcmp(args[0],"cd") == 0)
+  if(args[0] && strncmp(args[0], "cd", 2) == 0)
   {
      int error = 0; 
      if(args[1])
@@ -164,6 +200,7 @@ void readCommand() {
     printf("we fucked up");  
     do_exit();
   }
+
   else if (!parent) {
     if (execvp(args[0], args)) {
     	if((*args)[0]) {
@@ -171,16 +208,19 @@ void readCommand() {
           switch(errno) {
             case 1: printf("Permission denied.\n"); break;
             case 2: printf("Command not found.\n"); break;
+	    case 13: printf("Permission denied.\n"); break;
             default: printf("Unkown error.\n"); break;
     	    }
       }
     }
     exit(0);
   } else {
-    waitpid(parent, NULL, 0);
-    if (terminate) {
-      do_exit();
-    }
+	if (!(parseStatus & BACKGROUND)) { 
+    		waitpid(parent, NULL, 0);
+	}
+    	if (terminate) {
+      		do_exit();
+   	}
   }
   if(restore_stdin)
   {
@@ -207,153 +247,158 @@ void readCommand() {
   free(file);
   deleteArgs(args);
   free(args);
-  free(command);
 }
 
-bool buildInput(char* input, char** file, status* error) {
 
-  int length = 0;
-  
-  char c = getchar();
-  char prev = c;
-  bool file_mode = FALSE;
-  int index;
-  while (c != '\n' && c != EOF && length <= MAX_INPUT_LENGTH) 
-  {
-    while (c == '\\') {
-  		c = getchar();
-  		switch(c) {
-    		case '&':
-    		case '>':
-    		case '<':
-    		case '\\':
-    			*(input + length) = c;
-        	length++;
-    			break;	
-    		case ' ':
-    			*(input + length) = 7; /*7 is unsed in ASCII in the shell as it is the bell*/
-        	length++;		      /* Assigning here for easier parsing later*/
-    			break;
-    		default:
-    			*error = INVALID_ESCAPE;
-  		}
-  		c = getchar();
-		if (c == '\n')
-			return FALSE;
-	
-  	}
-   if(c == '&')
-   {
-	c = getchar();
-	if(c == ' ' || c == '\t' || c == '\n' || c == EOF)
-		*error |= FOREGROUND;
+char** readArgs(status* error, char** file) {
+	char** arguments = (char**)calloc(NUM_ARGS_STEP, sizeof(char*));
+	if (!arguments) {
+		memoryError();
+	}
+	int argCount = 0;
+	int argSteps = 1;
+	char c = getchar(); 
+	char* cmdWord = (char*)calloc(CMD_WORD_CHUNK + 1, sizeof(char));
+	if (!cmdWord) {
+		memoryError();
+	}
+	int wordChunks = 1;
+	int wordLength = 0;
+	fd redirect = -1;
+
+	while (c != '\n' && c != EOF) {
+		if (c == '\t' || c == ' ') {
+			while (c == '\t' || c == ' ') {
+				c = getchar();
+			}
+			cmdWord[wordLength] = 0;
+			redirect = addWord(cmdWord, &arguments, &argCount, &argSteps, error, redirect, file);
+			wordChunks = 1;
+			wordLength = 0;
+			cmdWord = (char*)calloc(CMD_WORD_CHUNK + 1, sizeof(char));
+			if (!cmdWord) {
+				memoryError();
+			}
+			continue;
+		}
+		if (c == '\\') {
+			c = getchar();
+			switch(c) {
+				case '\\':
+				case ' ':
+				case '&':
+					break;
+				case 't':
+					c = '\t';
+					break;
+				case 'n':
+					c = '\n';
+					continue;
+				default:
+					*error |= INVALID_ESCAPE;
+					//return NULL;
+			}
+			cmdWord[wordLength] = c;
+			wordLength++;
+			c = getchar();
+			continue;
+		}
+		if (c == '&' && ~(*error&BACKGROUND)) {
+			if (*error&BACKGROUND)
+				*error|=INVALID_SYNTAX;
+			handleAmpersand(error,&c);	
+		}
+		
+		if (wordLength == CMD_WORD_CHUNK * wordChunks) {
+			wordChunks++;
+			char* newWord = (char*)calloc(CMD_WORD_CHUNK * wordChunks + 1, sizeof(char));
+			if (!newWord) {
+				memoryError();
+			}
+			memcpy(newWord, cmdWord, sizeof(char) * CMD_WORD_CHUNK * (wordChunks - 1));
+			free(cmdWord);
+			cmdWord = newWord;
+		}
+		cmdWord[wordLength] = c;
+		wordLength++;
+		c = getchar();
+	}
+	if (wordLength) {
+		cmdWord[wordLength] = 0;
+		redirect = addWord(cmdWord, &arguments, &argCount, &argSteps, error, redirect, file);
+	}
+	if (c == EOF) {
+		(*error) |= EOF_FOUND;
+	}
+	return arguments;
+}
+
+fd addWord(char* word, char*** arguments, int* argCount, int* argSteps, status* error, fd redirect, char** file) {
+	if (redirect != -1) {
+		if (strncmp(word, "<", 1) == 0 || strncmp(word, ">", 1) == 0 || strncmp("word", "2>", 2) == 0) {
+			*error |= INVALID_SYNTAX;
+		}
+		file[redirect] = word;
+		return -1;
+	} else if (strncmp(word, "<", 1) == 0) {
+		if (file[STDIN][0]) {
+			*error |= INVALID_SYNTAX;
+			return -1;
+		} else {
+			*error |= REDIR_STDIN;
+			return STDIN;
+		}
+	} else if (strncmp(word, ">", 1) == 0) {
+		if (file[STDOUT][0]) {
+			*error |= INVALID_SYNTAX;
+			return -1;
+		} else {
+			*error |= REDIR_STDOUT;
+			return STDOUT;
+		}
+	} else if (strncmp(word, "2>", 2) == 0) {
+		if (file[STDERR][0]) {
+			*error |= INVALID_SYNTAX;
+			return -1;
+		} else {
+			*error |= REDIR_STDERR;
+			return STDERR;
+		}
+	} else {
+		if (file[STDERR][0] || file[STDOUT][0] || file[STDIN][0]) {
+			*error |= INVALID_SYNTAX;
+			return -1;
+		}
+		if (*argCount == (*argSteps * NUM_ARGS_STEP)) {
+			(*argSteps)++;
+			char** newArguments = (char**)calloc(*argSteps * NUM_ARGS_STEP, sizeof(char*));
+			if (!newArguments) {
+				memoryError();
+			}
+			memcpy(newArguments, *arguments, sizeof(char**) * ((*argSteps) - 1) * NUM_ARGS_STEP);
+			free(*arguments);
+			*arguments = newArguments;
+		}
+		(*arguments)[*argCount] = word;
+		(*argCount)++;
+		return -1;
+	}
+
+}
+
+void handleAmpersand(status* error,char*next) {
+	char c = getchar();
+	while (c == ' ' || c == '\t') {
+		c = getchar();
+	}
+	if (c != '\n' && c != EOF) {
+		(*error) |= INVALID_SYNTAX;
+	}
 	else
-		*error = INVALID_SYNTAX;
-  }	
-    if (file_mode)
-    {
-    	int file_len = 0;
-    	while (c != '<' && c != '>' && c != '\n' && c != EOF && file_len <= MAX_INPUT_LENGTH){
-    		if (c !=  ' ') {
-    			*(file[index]+file_len) = c;
-    			file_len++;
-    		}
-    	 	c = getchar();
-  	  }
-	    if ( c != '<' && c != '>') {
-		    break;
-      }
-    }
-    file_mode = FALSE;
-    index = 0;
-   
-    if(c == '>')
-    {
-    	if (prev == '2')
-    	{
-		if(file[STDERR][0])
-			*error = INVALID_SYNTAX;
-    		*(input + length) = 0;
-    		length--;
-      	 	index = STDERR;
-    	} else {
-	if(file[STDOUT][0])
-		*error = INVALID_SYNTAX;
-        index = STDOUT;
-  		}
-  	  file_mode = TRUE;
-    } else if(c == '<') {
-	if(file[STDIN][0] || file[STDERR][0] || file[STDOUT][0])
-		*error = INVALID_SYNTAX;
-    	index = STDIN;
-    	file_mode = TRUE;
-    } else if(prev != c || c != ' ' ) {
-      *(input + length) = c;
-      length++;
-    }
-   
-    prev = c;	
-    c = getchar();
-   
-  }
-  
-  if(*(input + length-1) == ' ') {
-    length--;
-  }
-  *(input + length) = 0;
-  if (c == EOF) {
-    return TRUE;
-  } else {
-    return FALSE;
-  }
+		(*error) |= BACKGROUND;
+	*next = c;
 }
-char** parseArgs(char* input) {
-  char** arguments = (char**)calloc(MAX_NUM_ARGS, sizeof(char*));
-  if (!arguments) {
-    memoryError();
-  }
-  int argCount = 0;
-  char c = *input;
-  char* arg = (char*)calloc(MAX_CMD_LENGTH, sizeof(char));
-  if (!arg) {
-    memoryError();
-  }
-  int argLength = 0;
-  bool esc_mode = FALSE;
-  while (c != 0) {
-    esc_mode = FALSE;
-    while (c == 7) //defined in build input
-    {
-	    *(arg + argLength) = ' ';
-     	argLength++;
-	    c = *(++input);
-    }
- 
-    if ((c == ' ' || c == '\t') && !esc_mode) {
-      if (argLength) {
-        *(arg + argLength) = 0;
-        *(arguments + argCount) = arg;
-        argCount++;
-        arg = (char*)calloc(MAX_CMD_LENGTH, sizeof(char));
-        if (!arg) {
-          memoryError();
-        }
-        argLength = 0;
-      }  
-    } else {
-      *(arg + argLength) = c;
-      argLength++;
-    }
-    c = *(++input);
-  }
-   
-  *(arg + argLength) = 0;
-  *(arguments + argCount) = arg;
-  argCount++;
-  *(arguments + argCount) = NULL;
-  return arguments;
-}    
-  
+
 void deleteArgs(char** args) {
   char* arg = *(args);
   while (arg != 0) {
