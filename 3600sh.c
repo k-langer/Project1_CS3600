@@ -120,7 +120,7 @@ void readCommand() {
 			do_exit();
 		}
 	} else {
-		//do_exit();
+		//do_exit(); //moved elsewhere
 	}
   
  	int restore_stdout = 0;
@@ -128,7 +128,7 @@ void readCommand() {
 	int restore_stderr = 0; 
  	int f = -1;
 	
-
+	
 	
 	if (parseStatus & REDIR_STDOUT)//type==(2<<STDOUT))
 	{ 
@@ -258,6 +258,8 @@ char** readArgs(status* error, char** file) {
 	int argCount = 0;
 	int argSteps = 1;
 	char c = getchar(); 
+	while (c == ' ' || c == '\t') //remove leading spaces
+		c = getchar();
 	char* cmdWord = (char*)calloc(CMD_WORD_CHUNK + 1, sizeof(char));
 	if (!cmdWord) {
 		memoryError();
