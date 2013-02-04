@@ -133,10 +133,34 @@ void readCommand() {
 	if (parseStatus & REDIR_STDOUT)//type==(2<<STDOUT))
 	{ 
 		f = open(file[STDOUT],O_RDWR|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR); 
+		if (f == -1)
+		{
+			printf("Error: Invalid syntax.\n");
+			if (terminate) {
+				do_exit();
+			}
+			return;
+		}
 		/*Open a file with the path "file" and the intention to read and write from it. */
 		/*If it does not exist create it and give read and write permissions to the user*/
         	restore_stdout = dup(STDOUT); //keep a copy of STDOUT
         	close(STDOUT); //Close STDOUT
+		dup(f); //Copy the same file descriptor but set it to the newly closed STDOUT
+		close(f); //Close original file
+	}
+	if (parseStatus & REDIR_STDERR)//type==(2<<STDERR))
+	{
+		f = open(file[STDERR],O_RDWR|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR); 
+		if (f == -1)
+		{
+			printf("Error: Invalid syntax.\n");
+			if (terminate) {
+				do_exit();
+			}
+			return;
+		}
+        	restore_stderr = dup(STDERR); //keep a copy of STDOUT
+        	close(STDERR); //Close STDOUT
 		dup(f); //Copy the same file descriptor but set it to the newly closed STDOUT
 		close(f); //Close original file
 	}
@@ -146,6 +170,9 @@ void readCommand() {
 		if (f == -1)
 		{
 			printf("Error: Unable to open redirection file.\n");
+			if (terminate) {
+				do_exit();
+			}
 			return;
 		}
         	restore_stdin = dup(STDIN); 
@@ -153,15 +180,6 @@ void readCommand() {
 		dup(f); 
 		close(f); 
 	}
-	if (parseStatus & REDIR_STDERR)//type==(2<<STDERR))
-	{
-		f = open(file[STDERR],O_RDWR|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR); 
-        	restore_stderr = dup(STDERR); //keep a copy of STDOUT
-        	close(STDERR); //Close STDOUT
-		dup(f); //Copy the same file descriptor but set it to the newly closed STDOUT
-		close(f); //Close original file
-	}
-
 
   if(args[0] && strncmp(args[0], "cd", 2) == 0)
   {
@@ -190,6 +208,7 @@ void readCommand() {
           switch(errno) {
             case 1: printf("Permission denied.\n"); break;
             case 2: printf("Command not found.\n"); break;
+	    case 13: printf("Permission denied.\n"); break;
             default: printf("Unkown error.\n"); break;
     	    }
       }
