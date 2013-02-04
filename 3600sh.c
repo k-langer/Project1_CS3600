@@ -307,6 +307,8 @@ char** readArgs(status* error, char** file) {
 			if (*error&BACKGROUND)
 				*error|=INVALID_SYNTAX;
 			handleAmpersand(error,&c);	
+			if (*error&BACKGROUND)
+				break;
 		}
 		
 		if (wordLength == CMD_WORD_CHUNK * wordChunks) {
