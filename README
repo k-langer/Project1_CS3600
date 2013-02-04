@@ -3,7 +3,7 @@
 Javier Muhrer
 Kevin Langer
 #CS3600##Project 1##############################################
-############################################################
+################################################################
 2) developement: 
 --------------------------------------------------------------------------------------
 Developed on 
@@ -24,28 +24,28 @@ A program that handles output, error, and input redirection.
 A program that handles escape characters. 
 A shell that supports cd. 
 A shell that mantains a current working directory. 
-A stable and memory clean shell. 
 Allow for background processes to run. 
-Is not/Does not 
+A stable and memory clean shell. 
+Is not/Does not: 
 Support high level bash features such as scripting, history, or completion.  
 #############################################################
 5) Development Notes
 ----------------------------------------------------------------------------------------
 	This project was the first of CS3600's projects. It is the first time out team
-worked together as a team in any class. We started this project early and worked
-on it sporadically throughout the project timeframe. Git was used to version the code.
-As a result, our team was able to work on this project independently, only meeting
-to work specifically on the project at the very beginning. Otherwise, communication
-happened electronically and work was done whenever either of the team members had
-spare cycles. Parts that needed to be done where mentioned in the git comments or
-in a TODO comment in the code. Bugs were identified using the test scripts. A wrapper
-for the test script was developed to isolate the tests that were failing and forward those
-tests into a separate file for further investigation.
+worked together as a team. We started this project early and worked on it sporadically 
+throughout the project timeframe. Git was used to version the code. As a result, our team 
+was able to work on this project independently, only meeting to work specifically on the 
+project at the very beginning. Otherwise, communication happened electronically, between 
+classes, and work was done whenever either of the team members had spare cycles. Parts that 
+needed to be done where mentioned in the git comments or in a TODO comment in the code. Bugs 
+were identified using the test scripts. A wrapper for the test script was developed to isolate 
+the tests that were failing and forward those tests into a separate file for further investigation. 
+Likewise, corner cases were tested with custom test scripts. 
         Special attention was paid to make sure that the code is stable. Using perl's ability
-to generate large inputs. The ability for the program to handle large inputs was tested.
-Likewise, using top the memory footprint of the design was analyzed (3600sh uses about 
-4x less memory than bash on the CCIS machines and this does not change significantly 
-with operation).
+to generate large inputs and testing corner cases of escape characters and redirection. 
+The ability for the program to handle large inputs was tested. Likewise, using top the memory 
+footprint of the design was analyzed (3600sh uses about 4x less memory than bash on the CCIS 
+machines and this does not change significantly with operation).
         The only extra feature that is currently implemented in 3600sh is the ability to support 
 cd. This was added because it added because it added a high level of extra functionality 
 with little overhead.
