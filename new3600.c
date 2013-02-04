@@ -48,7 +48,7 @@ void deleteArgs(char** args);
 void memoryError();
 void readCommand();
 fd addWord(char* word, char*** arguments, int* argCount, int* argSteps, status* error, fd redirect, char** file);
-void handleAmpersand(status* error);
+void handleAmpersand(status* error, char* next);
 
 int main(int argc, char*argv[]) {
   // Code which sets stdout to be unbuffered
@@ -98,15 +98,20 @@ void readCommand() {
 
 	status parseStatus = 0;
 	
-	char** args = readArgs(&parseStatus, file); 
+	char** args = readArgs(&parseStatus, file); 	
+	
 	bool terminate = EOF_FOUND & parseStatus;
 
 	switch(parseStatus & (INVALID_SYNTAX | INVALID_ESCAPE)){
 		case INVALID_SYNTAX:
 			printf("Error: Invalid syntax.\n");
+			if (terminate)
+				do_exit();			
 			return;
 		case INVALID_ESCAPE:
 			printf("Error: Unrecognized escape sequence.\n");
+			if (terminate)
+				do_exit();			
 			return;
 	}
 
@@ -115,7 +120,7 @@ void readCommand() {
 			do_exit();
 		}
 	} else {
-		do_exit();
+		//do_exit();
 	}
   
  	int restore_stdout = 0;
@@ -124,7 +129,7 @@ void readCommand() {
  	int f = -1;
 	
 
-	//TODO fix this
+	
 	if (parseStatus & REDIR_STDOUT)//type==(2<<STDOUT))
 	{ 
 		f = open(file[STDOUT],O_RDWR|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR); 
@@ -138,6 +143,11 @@ void readCommand() {
 	if (parseStatus & REDIR_STDIN)//type==(2<<STDIN))
 	{ 
 		f = open(file[STDIN],O_RDONLY); 
+		if (f == -1)
+		{
+			printf("Error: Unable to open redirection file.\n");
+			return;
+		}
         	restore_stdin = dup(STDIN); 
         	close(STDIN); 
 		dup(f); 
@@ -153,7 +163,7 @@ void readCommand() {
 	}
 
 
-  if(strncmp(args[0], "cd", 2) == 0)
+  if(args[0] && strncmp(args[0], "cd", 2) == 0)
   {
      int error = 0; 
      if(args[1])
@@ -172,6 +182,7 @@ void readCommand() {
     printf("we fucked up");  
     do_exit();
   }
+
   else if (!parent) {
     if (execvp(args[0], args)) {
     	if((*args)[0]) {
@@ -273,10 +284,12 @@ char** readArgs(status* error, char** file) {
 			c = getchar();
 			continue;
 		}
-		if (c == '&') {
-			handleAmpersand(error);
-			break;
+		if (c == '&' && ~(*error&BACKGROUND)) {
+			if (*error&BACKGROUND)
+				*error|=INVALID_SYNTAX;
+			handleAmpersand(error,&c);	
 		}
+		
 		if (wordLength == CMD_WORD_CHUNK * wordChunks) {
 			wordChunks++;
 			char* newWord = (char*)calloc(CMD_WORD_CHUNK * wordChunks + 1, sizeof(char));
@@ -329,7 +342,7 @@ fd addWord(char* word, char*** arguments, int* argCount, int* argSteps, status* 
 			*error |= INVALID_SYNTAX;
 			return -1;
 		} else {
-			*error |= STDERR;
+			*error |= REDIR_STDERR;
 			return STDERR;
 		}
 	} else {
@@ -354,7 +367,7 @@ fd addWord(char* word, char*** arguments, int* argCount, int* argSteps, status* 
 
 }
 
-void handleAmpersand(status* error) {
+void handleAmpersand(status* error,char*next) {
 	char c = getchar();
 	while (c == ' ' || c == '\t') {
 		c = getchar();
@@ -362,7 +375,9 @@ void handleAmpersand(status* error) {
 	if (c != '\n' && c != EOF) {
 		(*error) |= INVALID_SYNTAX;
 	}
-	(*error) |= BACKGROUND;
+	else
+		(*error) |= BACKGROUND;
+	*next = c;
 }
 
 void deleteArgs(char** args) {
