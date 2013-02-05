@@ -17,9 +17,10 @@
 #define MAX_CMD_LENGTH 100
 #define MAX_HOSTNAME_LENGTH 100
 #define MAX_INPUT_LENGTH 100
-#define EXIT_COMMAND "exit"
-#define NUM_ARGS_STEP 5
-#define CMD_WORD_CHUNK 10
+
+#define EXIT_COMMAND "exit" /* command user uses to quit shell */
+#define NUM_ARGS_STEP 5	/* number by which we increment space allocated for arguments */
+#define CMD_WORD_CHUNK 10 /* number by which we increment space allocated for 'word' of input */
 
 typedef char bool;
 #define TRUE 1
@@ -41,11 +42,24 @@ typedef char status;
 
 void printPrompt();
 
+/* function to parse input to shell, returns array of strings */
+/* error - status flag to be modified during parsing */
+/* file - array of files for redirection of stdin, stdout, stderr */
 char** readArgs(status* error, char** file);
+
+/* helper function to free memory of argument array */
 void deleteArgs(char** args);
+
+/* prints error message if error ever occurs during memory allocation */
 void memoryError();
+
+/* function that processes input and runs inputted commands */
 void readCommand();
+
+/* adds 'words' to argument array', handling errors and file redirection requests */
 fd addWord(char* word, char*** arguments, int* argCount, int* argSteps, status* error, fd redirect, char** file);
+
+/* deals with ampersand parsing for designating background processes */
 void handleAmpersand(status* error, char* next);
 
 int main(int argc, char*argv[]) {
@@ -67,6 +81,8 @@ int main(int argc, char*argv[]) {
 }
 
 void printPrompt() {
+  
+  /* get username, machine hostname, & directory, output appropriately */
   char* username = getenv("USER");
   char* hostname = (char*)calloc(MAX_HOSTNAME_LENGTH + 1, sizeof(char));
   if (!hostname) {
@@ -75,13 +91,13 @@ void printPrompt() {
 
   gethostname(hostname, MAX_HOSTNAME_LENGTH);
   *(hostname + MAX_HOSTNAME_LENGTH) = 0;
-  char* directory = getcwd(NULL,MAX_DIR_LENGTH); 
-   //getcwd used here, because dir changes in this shell.
+  char* directory = getcwd(NULL,MAX_DIR_LENGTH); //getcwd used here, because dir changes in this shell.
   printf("%s@%s:%s> ", username, hostname, directory);
   free(hostname);
 }
 
 void readCommand() {
+	/* allocate files used for redirection of stderr, stdin, stdout */
 	char  **file = calloc(3, sizeof(char*));
   	if (!file) {
   		memoryError();
@@ -95,10 +111,12 @@ void readCommand() {
 	    }
 	}
 
+	/* initialize status to designate different modes as identified in #defines */
 	status parseStatus = 0;
 	
 	char** args = readArgs(&parseStatus, file); 	
 	
+	/* determine whether shell should exit after executing command */
 	bool terminate = EOF_FOUND & parseStatus;
 	//Bit masking is used to use a single value for status.
 	switch(parseStatus & (INVALID_SYNTAX | INVALID_ESCAPE)){
@@ -114,21 +132,19 @@ void readCommand() {
 			return;
 	}
 
+	/* if "exit" is inputted, quit the shell */
 	if (args[0]) {
 		if (args[1] == NULL && strncmp(args[0], EXIT_COMMAND, strlen(EXIT_COMMAND)) == 0) {
 			do_exit();
 		}
-	} else {
-		//do_exit(); //moved elsewhere
 	}
-  
+	
  	int restore_stdout = 0;
 	int restore_stdin = 0; 
 	int restore_stderr = 0; 
  	int f = -1;
 	
-	
-	
+	/* check if any redirection was requested and set up proper files */
 	if (parseStatus & REDIR_STDOUT)
 	{ 
 		/*open afile with read and write permissions for the user. */
@@ -184,6 +200,7 @@ void readCommand() {
 		close(f); 
 	}
 
+  /* workaround to allow 'cd' command */
   if(args[0] && strncmp(args[0], "cd", 2) == 0)
   {
      int error = 0; 
@@ -204,6 +221,7 @@ void readCommand() {
     do_exit();
   }
 
+  /* if we are in the child process, execute the command */
   else if (!parent) {
     if (execvp(args[0], args)) {
     	if((*args)[0]) {
@@ -218,6 +236,7 @@ void readCommand() {
     }
     exit(0);
   } else {
+	/* in parent, wait for child if not a background process */
 	if (!(parseStatus & BACKGROUND)) {  
     		waitpid(parent, NULL, 0);
 	}
@@ -225,6 +244,8 @@ void readCommand() {
       		do_exit();
    	}
   }
+
+  /* restore any file redirections as necessary */
   if(restore_stdin)
   {
   	close(STDIN);
@@ -244,6 +265,7 @@ void readCommand() {
   	close(restore_stderr);
   }
 
+  /* free all allocated memory */
   for (int i = 0; i < 3; i++) {
     free(file[i]);
   }
