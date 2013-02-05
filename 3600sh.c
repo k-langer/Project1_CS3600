@@ -283,8 +283,10 @@ char** readArgs(status* error, char** file) {
 	int argCount = 0;
 	int argSteps = 1;
 	char c = getchar(); 
-	while (c == ' ' || c == '\t') //remove leading spaces
+	while (c == ' ' || c == '\t') {
+    /* remove leading spaces */
 		c = getchar();
+  }
 	char* cmdWord = (char*)calloc(CMD_WORD_CHUNK + 1, sizeof(char));
 	if (!cmdWord) {
 		memoryError();
@@ -293,6 +295,7 @@ char** readArgs(status* error, char** file) {
 	int wordLength = 0;
 	fd redirect = -1;
 
+  /* eliminate whitespace */
 	while (c != '\n' && c != EOF) {
 		if (c == '\t' || c == ' ') {
 			while (c == '\t' || c == ' ') {
@@ -308,6 +311,8 @@ char** readArgs(status* error, char** file) {
 			}
 			continue;
 		}
+
+    /* handle escape characters */
 		if (c == '\\') {
 			c = getchar();
 			switch(c) {
@@ -330,7 +335,7 @@ char** readArgs(status* error, char** file) {
 			c = getchar();
 			continue;
 		}
-		//Picks up any &'s that are not escaped
+		/* Picks up any &'s that are not escaped */
 		if (c == '&' && ~(*error&BACKGROUND)) { 
 			if (*error&BACKGROUND)
 				*error|=INVALID_SYNTAX;
@@ -339,6 +344,7 @@ char** readArgs(status* error, char** file) {
 				break;
 		}
 		
+    /* if no space remains for characters in string, reallocate more characters */
 		if (wordLength == CMD_WORD_CHUNK * wordChunks) {
 			wordChunks++;
 			char* newWord = (char*)calloc(CMD_WORD_CHUNK * wordChunks + 1, sizeof(char));
@@ -349,14 +355,19 @@ char** readArgs(status* error, char** file) {
 			free(cmdWord);
 			cmdWord = newWord;
 		}
+
+    /* add character to word and increment wordLength, grab next available character */
 		cmdWord[wordLength] = c;
 		wordLength++;
 		c = getchar();
 	}
+  /* add words that weren't followed by whitespace */
 	if (wordLength) {
 		cmdWord[wordLength] = 0;
 		redirect = addWord(cmdWord, &arguments, &argCount, &argSteps, error, redirect, file);
 	}
+  
+  /* mark EOF_FOUND flag if EOF is last character received */
 	if (c == EOF) {
 		(*error) |= EOF_FOUND;
 	}
@@ -364,13 +375,17 @@ char** readArgs(status* error, char** file) {
 }
 
 fd addWord(char* word, char*** arguments, int* argCount, int* argSteps, status* error, fd redirect, char** file) {
-	if (redirect != -1) {
+	/* check for unhandled redirection operators first */
+  if (redirect != -1) {
 		if (strncmp(word, "<", 1) == 0 || strncmp(word, ">", 1) == 0 || strncmp(word, "2>", 2) == 0) {
 			*error |= INVALID_SYNTAX;
 		}
 		file[redirect] = word;
 		return -1;
-	} else if (strncmp(word, "<", 1) == 0) {
+	} 
+  /* now check for redirection operators */
+  /* any attempt to redirect redirected STDIN, STDOUT, or STDERR is a syntax error */
+  else if (strncmp(word, "<", 1) == 0) {
 		if (file[STDIN][0]) {
 			*error |= INVALID_SYNTAX;
 			return -1;
@@ -399,6 +414,7 @@ fd addWord(char* word, char*** arguments, int* argCount, int* argSteps, status* 
 			*error |= INVALID_SYNTAX;
 			return -1;
 		}
+    /* check if we have hit edge of allocated space for arguments and reallocate if necessary */
 		if (*argCount == (*argSteps * NUM_ARGS_STEP)) {
 			(*argSteps)++;
 			char** newArguments = (char**)calloc(*argSteps * NUM_ARGS_STEP, sizeof(char*));
@@ -409,6 +425,7 @@ fd addWord(char* word, char*** arguments, int* argCount, int* argSteps, status* 
 			free(*arguments);
 			*arguments = newArguments;
 		}
+    /* add word to arg array and increment argCount */
 		(*arguments)[*argCount] = word;
 		(*argCount)++;
 		return -1;
@@ -417,6 +434,7 @@ fd addWord(char* word, char*** arguments, int* argCount, int* argSteps, status* 
 }
 
 void handleAmpersand(status* error,char*next) {
+  /* seek characters after ampersand, anything but whitespace designates a syntax error */
 	char c = getchar();
 	while (c == ' ' || c == '\t') {
 		c = getchar();
