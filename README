@@ -1,9 +1,7 @@
-###########################################################
 1) Authors 
 Javier Muhrer
 Kevin Langer
-#CS3600##Project 1##############################################
-################################################################
+#CS3600##Project 
 2) developement: 
 --------------------------------------------------------------------------------------
 Developed on 
@@ -15,7 +13,6 @@ Using Compiler flags: gcc -std=c99 -O0 -g -lm -Wall -pedantic -Werror -Wextra
 3) Installing 
 --------------------------------------------------------------------------------------
 Compile 3600sh.c and run the 3600sh binary. 
-############################################################
 4) Features
 --------------------------------------------------------------------------------------
 Is/Does: 
@@ -28,7 +25,7 @@ Allow for background processes to run.
 A stable and memory clean shell. 
 Is not/Does not: 
 Support high level bash features such as scripting, history, or completion.  
-#############################################################
+
 5) Development Notes
 ----------------------------------------------------------------------------------------
 	This project was the first of CS3600's projects. It is the first time out team
